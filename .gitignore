@@ -39,3 +39,24 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Editor settings
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# System junk
+Thumbs.db
+ehthumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*
+
+# AI Assistant files
+.claude/

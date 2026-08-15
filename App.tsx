@@ -12,6 +12,12 @@ import {
   Copy, Volume2, Search, Play, BookText, Sparkles, Sun, Moon, Gamepad2, Trophy
 } from 'lucide-react-native';
 
+import KhelaMenu from './components/khela/KhelaMenu';
+import WordChain from './components/khela/WordChain';
+import GuessImage from './components/khela/GuessImage';
+import CompleteSentence from './components/khela/CompleteSentence';
+import { GameProgress, INITIAL_PROGRESS, loadProgress, saveProgress } from './components/khela/khelaState';
+
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get('window');
 
@@ -47,8 +53,8 @@ const darkTheme = {
 // ==========================================
 // THEME CONTEXT
 // ==========================================
-type Theme = typeof lightTheme | typeof darkTheme;
-const ThemeContext = createContext<{theme: Theme, toggleTheme: () => void}>({
+export type Theme = typeof lightTheme | typeof darkTheme;
+export const ThemeContext = createContext<{theme: Theme, toggleTheme: () => void}>({
   theme: lightTheme,
   toggleTheme: () => {},
 });
@@ -274,95 +280,100 @@ function VideoLessonsScreen() {
   );
 }
 
-// ==========================================
-// MODULE 4: KHELA (GAMES)
-// ==========================================
-const MOCK_QUESTIONS = [
-  { word: 'सूर्य (Surya)', options: ['Moon', 'Sun', 'Star', 'Earth'], answer: 'Sun' },
-  { word: 'जलम् (Jalam)', options: ['Fire', 'Wind', 'Water', 'Sky'], answer: 'Water' },
-  { word: 'पुस्तकम् (Pustakam)', options: ['Pen', 'Book', 'Table', 'Chair'], answer: 'Book' },
-  { word: 'मित्र (Mitra)', options: ['Enemy', 'Teacher', 'Friend', 'Brother'], answer: 'Friend' },
-];
-
 function GameScreen() {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const styles = useMemo(() => getStyles(theme), [theme]);
 
-  const [currentQ, setCurrentQ] = useState(0);
-  const [score, setScore] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
+  const [activeGame, setActiveGame] = useState<'menu' | 'wordChain' | 'guessImage' | 'completeSentence'>('menu');
+  const [progress, setProgress] = useState<GameProgress>(INITIAL_PROGRESS);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleAnswer = (selected: string) => {
-    if (selected === MOCK_QUESTIONS[currentQ].answer) {
-      setScore(prev => prev + 10);
+  useEffect(() => {
+    async function initProgress() {
+      const data = await loadProgress();
+      setProgress(data);
+      setIsLoading(false);
     }
-    
-    if (currentQ < MOCK_QUESTIONS.length - 1) {
-      setCurrentQ(prev => prev + 1);
-    } else {
-      setGameOver(true);
-    }
+    initProgress();
+  }, []);
+
+  const handleUpdateProgress = async (updates: Partial<GameProgress>) => {
+    const nextProgress = {
+      ...progress,
+      ...updates,
+      wordChain: updates.wordChain ? { ...progress.wordChain, ...updates.wordChain } : progress.wordChain,
+      guessImage: updates.guessImage ? { ...progress.guessImage, ...updates.guessImage } : progress.guessImage,
+      completeSentence: updates.completeSentence ? { ...progress.completeSentence, ...updates.completeSentence } : progress.completeSentence,
+    };
+    setProgress(nextProgress);
+    await saveProgress(nextProgress);
   };
 
-  const restartGame = () => {
-    setScore(0);
-    setCurrentQ(0);
-    setGameOver(false);
+  const handleResetProgress = async () => {
+    setProgress(INITIAL_PROGRESS);
+    await saveProgress(INITIAL_PROGRESS);
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: theme.textMuted, fontSize: 16, fontWeight: '600' }}>
+          Loading Khela Room...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Image source={require('./assets/logo.png')} style={styles.logoImage} />
-          <View>
-            <Text style={styles.headerTitle}>Khela</Text>
-            <Text style={styles.headerSubtitle}>Vocabulary Challenges</Text>
+      {activeGame === 'menu' && (
+        <View style={styles.header}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Image source={require('./assets/logo.png')} style={styles.logoImage} />
+            <View>
+              <Text style={styles.headerTitle}>Khela Room</Text>
+              <Text style={styles.headerSubtitle}>Sanskrit Puzzles</Text>
+            </View>
           </View>
+          <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
+            {theme.isDark ? <Sun size={24} color={theme.textDark} /> : <Moon size={24} color={theme.textDark} />}
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
-          {theme.isDark ? <Sun size={24} color={theme.textDark} /> : <Moon size={24} color={theme.textDark} />}
-        </TouchableOpacity>
-      </View>
+      )}
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {gameOver ? (
-          <View style={styles.resultCard}>
-            <LinearGradient colors={['#F59E0B', '#B45309']} style={styles.trophyCircle}>
-              <Trophy size={40} color="#FFF" />
-            </LinearGradient>
-            <Text style={styles.resultTitle}>Game Complete!</Text>
-            <Text style={styles.resultScore}>You scored: {score} / {MOCK_QUESTIONS.length * 10}</Text>
-            <TouchableOpacity activeOpacity={0.8} onPress={restartGame}>
-              <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.playAgainBtn}>
-                <Text style={styles.playAgainText}>Play Again</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View>
-            <View style={styles.scoreBoard}>
-              <Text style={styles.scoreText}>Question {currentQ + 1} of {MOCK_QUESTIONS.length}</Text>
-              <Text style={styles.scoreText}>Score: {score}</Text>
-            </View>
-
-            <View style={styles.questionCard}>
-              <Text style={styles.questionPrompt}>What is the meaning of:</Text>
-              <Text style={styles.questionWord}>{MOCK_QUESTIONS[currentQ].word}</Text>
-            </View>
-
-            <View style={styles.optionsGrid}>
-              {MOCK_QUESTIONS[currentQ].options.map((opt, idx) => (
-                <TouchableOpacity key={idx} activeOpacity={0.7} style={styles.optionWrapper} onPress={() => handleAnswer(opt)}>
-                  <LinearGradient colors={[theme.surface, theme.surface]} style={styles.optionBtn}>
-                    <Text style={styles.optionText}>{opt}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+      <View style={{ flex: 1 }}>
+        {activeGame === 'menu' && (
+          <KhelaMenu 
+            progress={progress} 
+            onSelectGame={setActiveGame} 
+            onResetProgress={handleResetProgress} 
+          />
         )}
-      </ScrollView>
+
+        {activeGame === 'wordChain' && (
+          <WordChain 
+            progress={progress} 
+            onBack={() => setActiveGame('menu')} 
+            onUpdateProgress={handleUpdateProgress} 
+          />
+        )}
+
+        {activeGame === 'guessImage' && (
+          <GuessImage 
+            progress={progress} 
+            onBack={() => setActiveGame('menu')} 
+            onUpdateProgress={handleUpdateProgress} 
+          />
+        )}
+
+        {activeGame === 'completeSentence' && (
+          <CompleteSentence 
+            progress={progress} 
+            onBack={() => setActiveGame('menu')} 
+            onUpdateProgress={handleUpdateProgress} 
+          />
+        )}
+      </View>
     </View>
   );
 }
@@ -390,7 +401,7 @@ function MainNavigator() {
             tabBarInactiveTintColor: theme.textMuted,
             tabBarStyle: styles.tabBar,
             tabBarBackground: () => (
-              <BlurView intensity={80} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
+              <BlurView intensity={98} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
             ),
             tabBarLabelStyle: {
               fontWeight: '700',
@@ -554,16 +565,18 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     alignItems: 'center',
     marginVertical: -24,
     zIndex: 10,
+    elevation: 10,
   },
   swapBtn: {
-    padding: 18,
-    borderRadius: 30,
-    borderWidth: 6,
-    borderColor: theme.bgLight,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: theme.isDark ? '#000' : theme.primaryDark,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
-    shadowRadius: 16,
+    shadowRadius: 10,
     elevation: 8,
   },
 
