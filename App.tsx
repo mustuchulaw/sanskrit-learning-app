@@ -11,7 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { 
   ArrowRightLeft, BookOpen, PlayCircle, Mic, 
   Copy, Volume2, Search, Play, BookText, Sparkles, Sun, Moon, Gamepad2, Trophy,
-  X, ExternalLink, Clock
+  X, ExternalLink, Clock, Download
 } from 'lucide-react-native';
 
 import KhelaMenu from './components/khela/KhelaMenu';
@@ -20,6 +20,7 @@ import GuessImage from './components/khela/GuessImage';
 import CompleteSentence from './components/khela/CompleteSentence';
 import { GameProgress, INITIAL_PROGRESS, loadProgress, saveProgress } from './components/khela/khelaState';
 import videoData from './data/videos.json';
+import bookData from './data/books.json';
 
 interface VideoItem {
   id: string;
@@ -32,6 +33,20 @@ interface VideoItem {
   isFeatured?: boolean;
   description: string;
 }
+
+interface BookItem {
+  id: string;
+  title: string;
+  author: string;
+  category: string;
+  driveUrl: string;
+  pages: string;
+  fileType: string;
+  colors: [string, string];
+  isFeatured?: boolean;
+  description: string;
+}
+
 
 
 const Tab = createBottomTabNavigator();
@@ -178,15 +193,37 @@ function TranslatorScreen() {
 // ==========================================
 // MODULE 2: GRANTHALAYA (PDF LIBRARY)
 // ==========================================
-const MOCK_BOOKS = [
-  { id: 1, title: 'Sanskrit Grammar', author: 'Panini', colors: ['#0F766E', '#042F2E'] as [string, string] },
-  { id: 2, title: 'Bhagavad Gita', author: 'Vyasa', colors: ['#B45309', '#78350F'] as [string, string] },
-  { id: 3, title: 'Vedic Chants', author: 'Ancient Texts', colors: ['#6D28D9', '#4C1D95'] as [string, string] },
-];
-
 function LibraryScreen() {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const styles = useMemo(() => getStyles(theme), [theme]);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [activeBook, setActiveBook] = useState<BookItem | null>(null);
+
+  const categories = ['All', 'Grammar', 'Scriptures', 'Chants'];
+
+  const booksList = bookData as BookItem[];
+
+  const filteredBooks = booksList.filter((book) => {
+    const matchesCategory = selectedCategory === 'All' || book.category.toLowerCase() === selectedCategory.toLowerCase();
+    const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          book.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const openBookModal = (book: BookItem) => {
+    setActiveBook(book);
+  };
+
+  const closeBookModal = () => {
+    setActiveBook(null);
+  };
+
+  const handleOpenDrive = (url: string) => {
+    Linking.openURL(url);
+  };
 
   return (
     <View style={styles.container}>
@@ -195,7 +232,7 @@ function LibraryScreen() {
           <Image source={require('./assets/logo.png')} style={styles.logoImage} />
           <View>
             <Text style={styles.headerTitle}>Granthalaya</Text>
-            <Text style={styles.headerSubtitle}>Sacred Texts & Guides</Text>
+            <Text style={styles.headerSubtitle}>Sacred Texts & PDF Library</Text>
           </View>
         </View>
         <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
@@ -203,45 +240,189 @@ function LibraryScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Search Bar */}
       <View style={styles.searchBar}>
         <Search size={20} color={theme.textMuted} />
-        <TextInput placeholder="Search library..." style={styles.searchInput} placeholderTextColor={theme.textMuted} />
+        <TextInput 
+          placeholder="Search books, authors, topics..." 
+          style={styles.searchInput} 
+          placeholderTextColor={theme.textMuted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <X size={18} color={theme.textMuted} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Featured Readings</Text>
-          <Sparkles size={18} color={theme.primary} />
-        </View>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-          {MOCK_BOOKS.map((book) => (
-            <TouchableOpacity activeOpacity={0.9} key={book.id} style={styles.bookCard}>
-              <LinearGradient colors={book.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.bookCover}>
-                <BookText size={44} color="#FFF" opacity={0.9} />
-              </LinearGradient>
-              <Text style={styles.bookTitle} numberOfLines={1}>{book.title}</Text>
-              <Text style={styles.bookAuthor} numberOfLines={1}>{book.author}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* Category Filters */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+          {categories.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                onPress={() => setSelectedCategory(cat)}
+                style={[
+                  styles.categoryChip,
+                  isSelected && styles.activeCategoryChip
+                ]}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  isSelected && styles.activeCategoryChipText
+                ]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
-        <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Recent PDFs</Text>
-        {[1, 2, 3].map((item) => (
-          <TouchableOpacity activeOpacity={0.7} key={item} style={styles.listCard}>
-            <View style={[styles.listIconBox, { backgroundColor: theme.primaryLight }]}>
-              <BookOpen size={22} color={theme.isDark ? '#FFFFFF' : theme.primary} />
+        {/* Featured Readings Section */}
+        {selectedCategory === 'All' && searchQuery === '' && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Featured Books</Text>
+              <Sparkles size={18} color={theme.primary} />
             </View>
-            <View style={styles.listInfo}>
-              <Text style={styles.listTitle}>Chapter {item}: Vowels & Consonants</Text>
-              <Text style={styles.listSubtitle}>12 Pages • PDF Document</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+            
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+              {booksList.map((book) => (
+                <TouchableOpacity 
+                  activeOpacity={0.9} 
+                  key={book.id} 
+                  style={styles.bookCard}
+                  onPress={() => openBookModal(book)}
+                >
+                  <LinearGradient colors={book.colors as [string, string]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.bookCover}>
+                    <BookText size={44} color="#FFF" style={{ opacity: 0.9 }} />
+                    <View style={styles.bookCoverBadge}>
+                      <Text style={styles.bookCoverBadgeText}>{book.category}</Text>
+                    </View>
+                  </LinearGradient>
+                  <Text style={styles.bookTitle} numberOfLines={1}>{book.title}</Text>
+                  <Text style={styles.bookAuthor} numberOfLines={1}>{book.author}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
+
+        {/* All / Filtered Books Section */}
+        <Text style={[styles.sectionTitle, { marginTop: selectedCategory === 'All' && searchQuery === '' ? 28 : 8, marginBottom: 14 }]}>
+          {searchQuery ? `Search Results (${filteredBooks.length})` : selectedCategory === 'All' ? 'Granthalaya Collection' : `${selectedCategory} Books`}
+        </Text>
+
+        {filteredBooks.length === 0 ? (
+          <View style={styles.emptyStateContainer}>
+            <BookOpen size={48} color={theme.textMuted} style={{ marginBottom: 12 }} />
+            <Text style={styles.emptyStateTitle}>No Books Found</Text>
+            <Text style={styles.emptyStateSubtitle}>Try adjusting your search or category filter.</Text>
+          </View>
+        ) : (
+          filteredBooks.map((book) => (
+            <TouchableOpacity 
+              activeOpacity={0.8} 
+              key={book.id} 
+              style={styles.listCard}
+              onPress={() => openBookModal(book)}
+            >
+              <LinearGradient colors={book.colors as [string, string]} style={styles.bookListCoverMini}>
+                <BookOpen size={20} color="#FFF" />
+              </LinearGradient>
+              <View style={styles.listInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                  <Text style={styles.levelTag}>{book.category}</Text>
+                  <Text style={styles.dotSeparator}>•</Text>
+                  <Text style={styles.categoryTag}>{book.pages}</Text>
+                </View>
+                <Text style={styles.listTitle} numberOfLines={1}>{book.title}</Text>
+                <Text style={styles.listSubtitle} numberOfLines={1}>{book.author}</Text>
+              </View>
+              <View style={styles.readBadgeBtn}>
+                <Text style={styles.readBadgeText}>READ</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
+
+      {/* Book Reader Modal */}
+      <Modal
+        visible={!!activeBook}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeBookModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {activeBook && (
+              <>
+                <View style={styles.modalHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <View style={styles.modalCategoryBadge}>
+                      <Text style={styles.modalCategoryBadgeText}>{activeBook.category}</Text>
+                    </View>
+                    <Text style={styles.modalLevelText}>{activeBook.pages}</Text>
+                  </View>
+                  <TouchableOpacity onPress={closeBookModal} style={styles.closeButton}>
+                    <X size={22} color={theme.textDark} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Book Cover Header */}
+                <LinearGradient 
+                  colors={activeBook.colors as [string, string]} 
+                  start={{ x: 0, y: 0 }} 
+                  end={{ x: 1, y: 1 }} 
+                  style={styles.modalBookCover}
+                >
+                  <BookText size={56} color="#FFF" style={{ opacity: 0.95 }} />
+                  <Text style={styles.modalBookCoverTitle} numberOfLines={2}>{activeBook.title}</Text>
+                  <Text style={styles.modalBookCoverAuthor}>{activeBook.author}</Text>
+                </LinearGradient>
+
+                <ScrollView style={{ marginTop: 16, maxHeight: 180 }} showsVerticalScrollIndicator={false}>
+                  <Text style={styles.descriptionHeader}>About this Edition</Text>
+                  <Text style={styles.descriptionText}>{activeBook.description}</Text>
+                  <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={[styles.metaBadgeText, { color: theme.textMuted, marginLeft: 0 }]}>
+                      Format: {activeBook.fileType} • Hosted on Google Drive
+                    </Text>
+                  </View>
+                </ScrollView>
+
+                {/* Actions */}
+                <View style={{ flexDirection: 'row', marginTop: 16, gap: 12 }}>
+                  <TouchableOpacity 
+                    style={[styles.openYouTubeBtn, { flex: 1, backgroundColor: theme.primary }]}
+                    onPress={() => handleOpenDrive(activeBook.driveUrl)}
+                  >
+                    <ExternalLink size={18} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.openYouTubeBtnText}>Read Book</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.openYouTubeBtn, { flex: 1, backgroundColor: theme.isDark ? '#27272A' : '#E2E8F0' }]}
+                    onPress={() => handleOpenDrive(activeBook.driveUrl)}
+                  >
+                    <Download size={18} color={theme.isDark ? '#FFF' : theme.textDark} style={{ marginRight: 8 }} />
+                    <Text style={[styles.openYouTubeBtnText, { color: theme.isDark ? '#FFF' : theme.textDark }]}>Download PDF</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
+
 
 // ==========================================
 // MODULE 3: GURUKUL (VIDEO LESSONS)
@@ -814,6 +995,22 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     shadowOpacity: theme.isDark ? 0.4 : 0.15,
     shadowRadius: 20,
     elevation: 6,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  bookCoverBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  bookCoverBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   bookTitle: {
     marginTop: 16,
@@ -841,6 +1038,62 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     shadowOpacity: theme.isDark ? 0.2 : 0.03,
     shadowRadius: 12,
     elevation: 2,
+  },
+  bookListCoverMini: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  readBadgeBtn: {
+    backgroundColor: theme.primaryLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  readBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: theme.primary,
+    letterSpacing: 0.5,
+  },
+  modalBookCover: {
+    height: 180,
+    width: '100%',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalBookCoverTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  modalBookCoverAuthor: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.textDark,
+  },
+  emptyStateSubtitle: {
+    fontSize: 13,
+    color: theme.textMuted,
+    marginTop: 4,
   },
   listIconBox: {
     width: 54,
