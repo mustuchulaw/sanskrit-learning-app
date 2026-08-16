@@ -1,15 +1,18 @@
 import React, { useState, createContext, useContext, useMemo, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  ScrollView, StatusBar, Dimensions, useColorScheme, Image
+  ScrollView, StatusBar, Dimensions, useColorScheme, Image,
+  Modal, Linking, Platform, ActivityIndicator
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+
 import { 
-  ArrowRightLeft, BookOpen, PlayCircle, Mic, 
-  Copy, Volume2, Search, Play, BookText, Sparkles, Sun, Moon, Gamepad2, Trophy
+  ArrowRightLeft, BookOpen, PlayCircle, 
+  Copy, Search, Play, BookText, Sparkles, Sun, Moon, Gamepad2, Trophy,
+  X, ExternalLink, Clock, Download
 } from 'lucide-react-native';
 
 import KhelaMenu from './components/khela/KhelaMenu';
@@ -17,6 +20,35 @@ import WordChain from './components/khela/WordChain';
 import GuessImage from './components/khela/GuessImage';
 import CompleteSentence from './components/khela/CompleteSentence';
 import { GameProgress, INITIAL_PROGRESS, loadProgress, saveProgress } from './components/khela/khelaState';
+import videoData from './data/videos.json';
+import bookData from './data/books.json';
+
+interface VideoItem {
+  id: string;
+  youtubeId: string;
+  title: string;
+  subtitle: string;
+  category: string;
+  duration: string;
+  level: string;
+  isFeatured?: boolean;
+  description: string;
+}
+
+interface BookItem {
+  id: string;
+  title: string;
+  author: string;
+  category: string;
+  driveUrl: string;
+  pages: string;
+  fileType: string;
+  colors: [string, string];
+  isFeatured?: boolean;
+  description: string;
+}
+
+
 
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get('window');
@@ -78,19 +110,101 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 // ==========================================
-// MODULE 1: ANUVADAK (TRANSLATOR)
+// MODULE 1: ANUVADAK (TRANSLATOR - SARVAM.AI)
 // ==========================================
+interface LanguageOption {
+  code: string;
+  name: string;
+  nativeName: string;
+}
+
+const LANGUAGES: LanguageOption[] = [
+  { code: 'en-IN', name: 'English', nativeName: 'English' },
+  { code: 'sa-IN', name: 'Sanskrit', nativeName: 'संस्कृतम्' },
+  { code: 'hi-IN', name: 'Hindi', nativeName: 'हिन्दी' },
+  { code: 'mr-IN', name: 'Marathi', nativeName: 'मराठी' },
+];
+
+const SARVAM_API_KEY = 'sk_d42jxzg7_TjLhFIBpwBAX9YyDSFRGSh0u';
+const SARVAM_URL = 'https://api.sarvam.ai/translate';
+
+async function translateWithSarvam(
+  text: string,
+  sourceCode: string,
+  targetCode: string
+): Promise<string> {
+  if (!text.trim()) return '';
+  try {
+    const res = await fetch(SARVAM_URL, {
+      method: 'POST',
+      headers: {
+        'api-subscription-key': SARVAM_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        input: text.trim(),
+        source_language_code: sourceCode,
+        target_language_code: targetCode,
+        model: 'sarvam-translate:v1'
+      })
+    });
+    const data = await res.json();
+    if (data && data.translated_text) {
+      return data.translated_text;
+    }
+    return '';
+  } catch (err) {
+    console.error('Sarvam Translation Error:', err);
+    return '';
+  }
+}
+
 function TranslatorScreen() {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const styles = useMemo(() => getStyles(theme), [theme]);
   
-  const [inputText, setInputText] = useState('');
-  const [sourceLang, setSourceLang] = useState('English');
-  const [targetLang, setTargetLang] = useState('Sanskrit (संस्कृतम्)');
+  const [sourceLangCode, setSourceLangCode] = useState<string>('en-IN');
+  const [targetLangCode, setTargetLangCode] = useState<string>('sa-IN');
+  const [inputText, setInputText] = useState<string>('');
+  const [translatedText, setTranslatedText] = useState<string>('');
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
+
+  const sourceLang = LANGUAGES.find(l => l.code === sourceLangCode) || LANGUAGES[0];
+  const targetLang = LANGUAGES.find(l => l.code === targetLangCode) || LANGUAGES[1];
+
+  // Debounced translation effect using Sarvam.ai
+  useEffect(() => {
+    if (!inputText.trim()) {
+      setTranslatedText('');
+      setIsTranslating(false);
+      return;
+    }
+
+    setIsTranslating(true);
+    const timer = setTimeout(async () => {
+      const result = await translateWithSarvam(inputText, sourceLangCode, targetLangCode);
+      setTranslatedText(result);
+      setIsTranslating(false);
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [inputText, sourceLangCode, targetLangCode]);
 
   const swapLanguages = () => {
-    setSourceLang(targetLang);
-    setTargetLang(sourceLang);
+    const oldSource = sourceLangCode;
+    const oldTarget = targetLangCode;
+    setSourceLangCode(oldTarget);
+    setTargetLangCode(oldSource);
+    setInputText(translatedText);
+    setTranslatedText(inputText);
+  };
+
+  const handleCopy = () => {
+    if (translatedText) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (
@@ -100,7 +214,7 @@ function TranslatorScreen() {
           <Image source={require('./assets/logo.png')} style={styles.logoImage} />
           <View>
             <Text style={styles.headerTitle}>Anuvadak</Text>
-            <Text style={styles.headerSubtitle}>Translate & Learn</Text>
+            <Text style={styles.headerSubtitle}>Sarvam AI Neural Translator</Text>
           </View>
         </View>
         <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
@@ -109,25 +223,59 @@ function TranslatorScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Source Language Selection Pills */}
+        <Text style={[styles.sectionTitle, { fontSize: 13, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8, color: theme.textMuted }]}>
+          From Language
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+          {LANGUAGES.map((lang) => {
+            const isSelected = sourceLangCode === lang.code;
+            return (
+              <TouchableOpacity
+                key={`src-${lang.code}`}
+                onPress={() => {
+                  if (lang.code === targetLangCode) {
+                    setTargetLangCode(sourceLangCode);
+                  }
+                  setSourceLangCode(lang.code);
+                }}
+                style={[
+                  styles.categoryChip,
+                  isSelected && styles.activeCategoryChip
+                ]}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  isSelected && styles.activeCategoryChipText
+                ]}>
+                  {lang.name} ({lang.nativeName})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Source Text Card */}
         <View style={styles.translationCard}>
           <View style={styles.langHeader}>
-            <Text style={styles.langText}>{sourceLang}</Text>
-            <TouchableOpacity><Volume2 size={20} color={theme.textMuted} /></TouchableOpacity>
+            <Text style={styles.langText}>{sourceLang.name} ({sourceLang.nativeName})</Text>
+            {inputText.length > 0 && (
+              <TouchableOpacity onPress={() => setInputText('')}>
+                <X size={18} color={theme.textMuted} />
+              </TouchableOpacity>
+            )}
           </View>
           <TextInput
             style={styles.textInput}
-            placeholder="Enter text to translate..."
+            placeholder={`Type text in ${sourceLang.name} to translate...`}
             placeholderTextColor={theme.textMuted}
             multiline
             value={inputText}
             onChangeText={setInputText}
           />
-          <View style={styles.cardFooter}>
-            <TouchableOpacity style={styles.iconBtn}><Mic size={20} color={theme.textDark} /></TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}><Copy size={20} color={theme.textDark} /></TouchableOpacity>
-          </View>
         </View>
 
+        {/* Swap Languages Button */}
         <View style={styles.swapContainer}>
           <TouchableOpacity activeOpacity={0.8} onPress={swapLanguages}>
             <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.swapBtn}>
@@ -136,21 +284,80 @@ function TranslatorScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Target Language Selection Pills */}
+        <Text style={[styles.sectionTitle, { fontSize: 13, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8, color: theme.textMuted }]}>
+          To Language
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+          {LANGUAGES.map((lang) => {
+            const isSelected = targetLangCode === lang.code;
+            return (
+              <TouchableOpacity
+                key={`tgt-${lang.code}`}
+                onPress={() => {
+                  if (lang.code === sourceLangCode) {
+                    setSourceLangCode(targetLangCode);
+                  }
+                  setTargetLangCode(lang.code);
+                }}
+                style={[
+                  styles.categoryChip,
+                  isSelected && styles.activeCategoryChip
+                ]}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  isSelected && styles.activeCategoryChipText
+                ]}>
+                  {lang.name} ({lang.nativeName})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Target Translation Output Card */}
         <LinearGradient
           colors={['#115E59', '#042F2E']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={[styles.translationCard, styles.outputCard]}
         >
           <View style={styles.langHeader}>
-            <Text style={[styles.langText, { color: '#CCFBF1' }]}>{targetLang}</Text>
-            <TouchableOpacity><Volume2 size={20} color="#CCFBF1" /></TouchableOpacity>
+            <Text style={[styles.langText, { color: '#CCFBF1' }]}>
+              {targetLang.name} ({targetLang.nativeName})
+            </Text>
+            {isTranslating && (
+              <ActivityIndicator size="small" color="#CCFBF1" />
+            )}
           </View>
+
           <Text style={[styles.outputText, { color: '#FFFFFF' }]}>
-            {inputText ? "नमस्ते, कथम् अस्ति भवान्?" : "Translation will appear here..."}
+            {inputText.trim() 
+              ? (isTranslating && !translatedText ? 'Translating via Sarvam AI...' : translatedText || 'Translating...')
+              : `Translation in ${targetLang.name} will appear here when you type...`
+            }
           </Text>
-          <View style={styles.cardFooter}>
-            <TouchableOpacity style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-              <Copy size={20} color="#CCFBF1" />
+
+          <View style={styles.outputCardFooter}>
+            <View style={styles.sarvamBadge}>
+              <Sparkles size={13} color="#CCFBF1" style={{ marginRight: 5 }} />
+              <Text style={styles.sarvamBadgeText}>Sarvam.ai</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[
+                styles.copyButton, 
+                copied && styles.copyButtonActive,
+                !translatedText.trim() && { opacity: 0.5 }
+              ]}
+              onPress={handleCopy}
+              disabled={!translatedText.trim()}
+              activeOpacity={0.8}
+            >
+              <Copy size={14} color={copied ? '#042F2E' : '#CCFBF1'} style={{ marginRight: 6 }} />
+              <Text style={[styles.copyButtonText, copied && styles.copyButtonTextActive]}>
+                {copied ? 'Copied!' : 'Copy'}
+              </Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -162,15 +369,37 @@ function TranslatorScreen() {
 // ==========================================
 // MODULE 2: GRANTHALAYA (PDF LIBRARY)
 // ==========================================
-const MOCK_BOOKS = [
-  { id: 1, title: 'Sanskrit Grammar', author: 'Panini', colors: ['#0F766E', '#042F2E'] as [string, string] },
-  { id: 2, title: 'Bhagavad Gita', author: 'Vyasa', colors: ['#B45309', '#78350F'] as [string, string] },
-  { id: 3, title: 'Vedic Chants', author: 'Ancient Texts', colors: ['#6D28D9', '#4C1D95'] as [string, string] },
-];
-
 function LibraryScreen() {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const styles = useMemo(() => getStyles(theme), [theme]);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [activeBook, setActiveBook] = useState<BookItem | null>(null);
+
+  const categories = ['All', 'Grammar', 'Scriptures', 'Chants'];
+
+  const booksList = bookData as BookItem[];
+
+  const filteredBooks = booksList.filter((book) => {
+    const matchesCategory = selectedCategory === 'All' || book.category.toLowerCase() === selectedCategory.toLowerCase();
+    const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          book.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const openBookModal = (book: BookItem) => {
+    setActiveBook(book);
+  };
+
+  const closeBookModal = () => {
+    setActiveBook(null);
+  };
+
+  const handleOpenDrive = (url: string) => {
+    Linking.openURL(url);
+  };
 
   return (
     <View style={styles.container}>
@@ -179,7 +408,7 @@ function LibraryScreen() {
           <Image source={require('./assets/logo.png')} style={styles.logoImage} />
           <View>
             <Text style={styles.headerTitle}>Granthalaya</Text>
-            <Text style={styles.headerSubtitle}>Sacred Texts & Guides</Text>
+            <Text style={styles.headerSubtitle}>Sacred Texts & PDF Library</Text>
           </View>
         </View>
         <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
@@ -187,45 +416,189 @@ function LibraryScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Search Bar */}
       <View style={styles.searchBar}>
         <Search size={20} color={theme.textMuted} />
-        <TextInput placeholder="Search library..." style={styles.searchInput} placeholderTextColor={theme.textMuted} />
+        <TextInput 
+          placeholder="Search books, authors, topics..." 
+          style={styles.searchInput} 
+          placeholderTextColor={theme.textMuted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <X size={18} color={theme.textMuted} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Featured Readings</Text>
-          <Sparkles size={18} color={theme.primary} />
-        </View>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-          {MOCK_BOOKS.map((book) => (
-            <TouchableOpacity activeOpacity={0.9} key={book.id} style={styles.bookCard}>
-              <LinearGradient colors={book.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.bookCover}>
-                <BookText size={44} color="#FFF" opacity={0.9} />
-              </LinearGradient>
-              <Text style={styles.bookTitle} numberOfLines={1}>{book.title}</Text>
-              <Text style={styles.bookAuthor} numberOfLines={1}>{book.author}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* Category Filters */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+          {categories.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                onPress={() => setSelectedCategory(cat)}
+                style={[
+                  styles.categoryChip,
+                  isSelected && styles.activeCategoryChip
+                ]}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  isSelected && styles.activeCategoryChipText
+                ]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
-        <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Recent PDFs</Text>
-        {[1, 2, 3].map((item) => (
-          <TouchableOpacity activeOpacity={0.7} key={item} style={styles.listCard}>
-            <View style={[styles.listIconBox, { backgroundColor: theme.primaryLight }]}>
-              <BookOpen size={22} color={theme.isDark ? '#FFFFFF' : theme.primary} />
+        {/* Featured Readings Section */}
+        {selectedCategory === 'All' && searchQuery === '' && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Featured Books</Text>
+              <Sparkles size={18} color={theme.primary} />
             </View>
-            <View style={styles.listInfo}>
-              <Text style={styles.listTitle}>Chapter {item}: Vowels & Consonants</Text>
-              <Text style={styles.listSubtitle}>12 Pages • PDF Document</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+            
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+              {booksList.map((book) => (
+                <TouchableOpacity 
+                  activeOpacity={0.9} 
+                  key={book.id} 
+                  style={styles.bookCard}
+                  onPress={() => openBookModal(book)}
+                >
+                  <LinearGradient colors={book.colors as [string, string]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.bookCover}>
+                    <BookText size={44} color="#FFF" style={{ opacity: 0.9 }} />
+                    <View style={styles.bookCoverBadge}>
+                      <Text style={styles.bookCoverBadgeText}>{book.category}</Text>
+                    </View>
+                  </LinearGradient>
+                  <Text style={styles.bookTitle} numberOfLines={1}>{book.title}</Text>
+                  <Text style={styles.bookAuthor} numberOfLines={1}>{book.author}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
+
+        {/* All / Filtered Books Section */}
+        <Text style={[styles.sectionTitle, { marginTop: selectedCategory === 'All' && searchQuery === '' ? 28 : 8, marginBottom: 14 }]}>
+          {searchQuery ? `Search Results (${filteredBooks.length})` : selectedCategory === 'All' ? 'Granthalaya Collection' : `${selectedCategory} Books`}
+        </Text>
+
+        {filteredBooks.length === 0 ? (
+          <View style={styles.emptyStateContainer}>
+            <BookOpen size={48} color={theme.textMuted} style={{ marginBottom: 12 }} />
+            <Text style={styles.emptyStateTitle}>No Books Found</Text>
+            <Text style={styles.emptyStateSubtitle}>Try adjusting your search or category filter.</Text>
+          </View>
+        ) : (
+          filteredBooks.map((book) => (
+            <TouchableOpacity 
+              activeOpacity={0.8} 
+              key={book.id} 
+              style={styles.listCard}
+              onPress={() => openBookModal(book)}
+            >
+              <LinearGradient colors={book.colors as [string, string]} style={styles.bookListCoverMini}>
+                <BookOpen size={20} color="#FFF" />
+              </LinearGradient>
+              <View style={styles.listInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                  <Text style={styles.levelTag}>{book.category}</Text>
+                  <Text style={styles.dotSeparator}>•</Text>
+                  <Text style={styles.categoryTag}>{book.pages}</Text>
+                </View>
+                <Text style={styles.listTitle} numberOfLines={1}>{book.title}</Text>
+                <Text style={styles.listSubtitle} numberOfLines={1}>{book.author}</Text>
+              </View>
+              <View style={styles.readBadgeBtn}>
+                <Text style={styles.readBadgeText}>READ</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
+
+      {/* Book Reader Modal */}
+      <Modal
+        visible={!!activeBook}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeBookModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {activeBook && (
+              <>
+                <View style={styles.modalHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <View style={styles.modalCategoryBadge}>
+                      <Text style={styles.modalCategoryBadgeText}>{activeBook.category}</Text>
+                    </View>
+                    <Text style={styles.modalLevelText}>{activeBook.pages}</Text>
+                  </View>
+                  <TouchableOpacity onPress={closeBookModal} style={styles.closeButton}>
+                    <X size={22} color={theme.textDark} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Book Cover Header */}
+                <LinearGradient 
+                  colors={activeBook.colors as [string, string]} 
+                  start={{ x: 0, y: 0 }} 
+                  end={{ x: 1, y: 1 }} 
+                  style={styles.modalBookCover}
+                >
+                  <BookText size={56} color="#FFF" style={{ opacity: 0.95 }} />
+                  <Text style={styles.modalBookCoverTitle} numberOfLines={2}>{activeBook.title}</Text>
+                  <Text style={styles.modalBookCoverAuthor}>{activeBook.author}</Text>
+                </LinearGradient>
+
+                <ScrollView style={{ marginTop: 16, maxHeight: 180 }} showsVerticalScrollIndicator={false}>
+                  <Text style={styles.descriptionHeader}>About this Edition</Text>
+                  <Text style={styles.descriptionText}>{activeBook.description}</Text>
+                  <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={[styles.metaBadgeText, { color: theme.textMuted, marginLeft: 0 }]}>
+                      Format: {activeBook.fileType} • Hosted on Supabase Storage
+                    </Text>
+                  </View>
+                </ScrollView>
+
+                {/* Actions */}
+                <View style={{ flexDirection: 'row', marginTop: 16, gap: 12 }}>
+                  <TouchableOpacity 
+                    style={[styles.openYouTubeBtn, { flex: 1, backgroundColor: theme.primary }]}
+                    onPress={() => handleOpenDrive(activeBook.driveUrl)}
+                  >
+                    <ExternalLink size={18} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.openYouTubeBtnText}>Read Book</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.openYouTubeBtn, { flex: 1, backgroundColor: theme.isDark ? '#27272A' : '#E2E8F0' }]}
+                    onPress={() => handleOpenDrive(activeBook.driveUrl)}
+                  >
+                    <Download size={18} color={theme.isDark ? '#FFF' : theme.textDark} style={{ marginRight: 8 }} />
+                    <Text style={[styles.openYouTubeBtnText, { color: theme.isDark ? '#FFF' : theme.textDark }]}>Download PDF</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
+
 
 // ==========================================
 // MODULE 3: GURUKUL (VIDEO LESSONS)
@@ -233,6 +606,31 @@ function LibraryScreen() {
 function VideoLessonsScreen() {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const styles = useMemo(() => getStyles(theme), [theme]);
+
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
+
+  const categories = ['All', 'Pronunciation', 'Grammar', 'Conversation', 'Chanting'];
+
+  const videosList = videoData as VideoItem[];
+  const featuredVideo = videosList.find((v) => v.isFeatured) || videosList[0];
+
+  const filteredVideos = videosList.filter((video) => {
+    if (selectedCategory === 'All') return true;
+    return video.category.toLowerCase() === selectedCategory.toLowerCase();
+  });
+
+  const openVideo = (video: VideoItem) => {
+    setActiveVideo(video);
+  };
+
+  const closeVideo = () => {
+    setActiveVideo(null);
+  };
+
+  const handleOpenYouTube = (youtubeId: string) => {
+    Linking.openURL(`https://www.youtube.com/watch?v=${youtubeId}`);
+  };
 
   return (
     <View style={styles.container}>
@@ -250,35 +648,185 @@ function VideoLessonsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity activeOpacity={0.9} style={styles.featuredVideo}>
-          <View style={styles.videoThumbnail}>
-            <BlurView intensity={40} tint={theme.blurTint} style={styles.playButtonGlass}>
-              <Play size={28} color="#FFF" fill="#FFF" style={{ marginLeft: 4 }} />
-            </BlurView>
-          </View>
-          <View style={styles.videoInfo}>
-            <Text style={styles.videoBadge}>NEW EPISODE</Text>
-            <Text style={styles.videoTitle}>Mastering Sanskrit Pronunciation</Text>
-            <Text style={styles.videoSubtitle}>Beginner • 15 Mins</Text>
-          </View>
-        </TouchableOpacity>
+        {/* Featured Video Card */}
+        {featuredVideo && (
+          <TouchableOpacity 
+            activeOpacity={0.9} 
+            style={styles.featuredVideo}
+            onPress={() => openVideo(featuredVideo)}
+          >
+            <View style={styles.videoThumbnailContainer}>
+              <Image 
+                source={{ uri: `https://img.youtube.com/vi/${featuredVideo.youtubeId}/hqdefault.jpg` }}
+                style={styles.featuredThumbnailImage}
+                resizeMode="cover"
+              />
+              <View style={styles.videoOverlayGradient}>
+                <BlurView intensity={40} tint={theme.blurTint} style={styles.playButtonGlass}>
+                  <Play size={28} color="#FFF" fill="#FFF" style={{ marginLeft: 4 }} />
+                </BlurView>
+              </View>
+            </View>
+            <View style={styles.videoInfo}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={styles.videoBadge}>NEW EPISODE • FEATURED</Text>
+                <View style={styles.durationChip}>
+                  <Clock size={12} color={theme.primary} style={{ marginRight: 4 }} />
+                  <Text style={styles.durationChipText}>{featuredVideo.duration}</Text>
+                </View>
+              </View>
+              <Text style={styles.videoTitle}>{featuredVideo.title}</Text>
+              <Text style={styles.videoSubtitle}>{featuredVideo.subtitle}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
-        <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Grammar Basics</Text>
-        {[1, 2, 3].map((item) => (
-          <TouchableOpacity activeOpacity={0.7} key={item} style={styles.videoListCard}>
-            <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.smallThumbnail}>
-              <PlayCircle size={24} color="#FFF" />
-            </LinearGradient>
+        {/* Category Filters */}
+        <Text style={[styles.sectionTitle, { marginTop: 28, marginBottom: 14 }]}>Explore Categories</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+          {categories.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                onPress={() => setSelectedCategory(cat)}
+                style={[
+                  styles.categoryChip,
+                  isSelected && styles.activeCategoryChip
+                ]}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  isSelected && styles.activeCategoryChipText
+                ]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Video List */}
+        <Text style={[styles.sectionTitle, { marginBottom: 14 }]}>
+          {selectedCategory === 'All' ? 'All Masterclasses' : `${selectedCategory} Videos`}
+        </Text>
+
+        {filteredVideos.map((video) => (
+          <TouchableOpacity 
+            activeOpacity={0.8} 
+            key={video.id} 
+            style={styles.videoListCard}
+            onPress={() => openVideo(video)}
+          >
+            <View style={styles.smallThumbnailContainer}>
+              <Image 
+                source={{ uri: `https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg` }}
+                style={styles.smallThumbnailImage}
+                resizeMode="cover"
+              />
+              <View style={styles.smallPlayOverlay}>
+                <PlayCircle size={24} color="#FFF" />
+              </View>
+            </View>
             <View style={styles.listInfo}>
-              <Text style={styles.listTitle}>Understanding Noun Cases (Vibhakti)</Text>
-              <Text style={styles.listSubtitle}>Lesson {item} • 10 Mins</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={styles.levelTag}>{video.level}</Text>
+                <Text style={styles.dotSeparator}>•</Text>
+                <Text style={styles.categoryTag}>{video.category}</Text>
+              </View>
+              <Text style={styles.listTitle} numberOfLines={2}>{video.title}</Text>
+              <Text style={styles.listSubtitle}>{video.duration}</Text>
             </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* Interactive Video Player Modal */}
+      <Modal
+        visible={!!activeVideo}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeVideo}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {activeVideo && (
+              <>
+                <View style={styles.modalHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <View style={styles.modalCategoryBadge}>
+                      <Text style={styles.modalCategoryBadgeText}>{activeVideo.category}</Text>
+                    </View>
+                    <Text style={styles.modalLevelText}>{activeVideo.level}</Text>
+                  </View>
+                  <TouchableOpacity onPress={closeVideo} style={styles.closeButton}>
+                    <X size={22} color={theme.textDark} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Embedded Video Player */}
+                <View style={styles.playerContainer}>
+                  {Platform.OS === 'web' ? (
+                    React.createElement('iframe', {
+                      width: '100%',
+                      height: '220',
+                      src: `https://www.youtube.com/embed/${activeVideo.youtubeId}?autoplay=1`,
+                      title: activeVideo.title,
+                      frameBorder: '0',
+                      allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
+                      allowFullScreen: true,
+                      style: { borderRadius: 16, border: 'none' }
+                    })
+                  ) : (
+                    <TouchableOpacity 
+                      activeOpacity={0.9} 
+                      style={styles.nativePlayerPlaceholder}
+                      onPress={() => handleOpenYouTube(activeVideo.youtubeId)}
+                    >
+                      <Image 
+                        source={{ uri: `https://img.youtube.com/vi/${activeVideo.youtubeId}/hqdefault.jpg` }}
+                        style={styles.modalThumbnailImage}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.nativePlayerOverlay}>
+                        <PlayCircle size={56} color="#FFF" />
+                        <Text style={styles.playNowText}>Tap to Watch on YouTube</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <ScrollView style={{ marginTop: 16, maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+                  <Text style={styles.modalTitle}>{activeVideo.title}</Text>
+                  <Text style={styles.modalSubtitle}>{activeVideo.subtitle}</Text>
+
+                  <View style={styles.metaRow}>
+                    <View style={styles.metaBadge}>
+                      <Clock size={14} color={theme.primary} />
+                      <Text style={styles.metaBadgeText}>{activeVideo.duration}</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.descriptionHeader}>About this Masterclass</Text>
+                  <Text style={styles.descriptionText}>{activeVideo.description}</Text>
+                </ScrollView>
+
+                <TouchableOpacity 
+                  style={styles.openYouTubeBtn}
+                  onPress={() => handleOpenYouTube(activeVideo.youtubeId)}
+                >
+                  <ExternalLink size={18} color="#FFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.openYouTubeBtnText}>Open in YouTube App</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
+
 
 function GameScreen() {
   const { theme, toggleTheme } = useContext(ThemeContext);
@@ -561,6 +1109,52 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     borderRadius: 16,
     backgroundColor: theme.isDark ? theme.bgLight : 'rgba(0,0,0,0.03)',
   },
+  outputCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  sarvamBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  sarvamBadgeText: {
+    color: '#CCFBF1',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(204,251,241,0.25)',
+  },
+  copyButtonActive: {
+    backgroundColor: '#CCFBF1',
+    borderColor: '#CCFBF1',
+  },
+  copyButtonText: {
+    color: '#CCFBF1',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  copyButtonTextActive: {
+    color: '#042F2E',
+  },
   swapContainer: {
     alignItems: 'center',
     marginVertical: -24,
@@ -622,6 +1216,22 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     shadowOpacity: theme.isDark ? 0.4 : 0.15,
     shadowRadius: 20,
     elevation: 6,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  bookCoverBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  bookCoverBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   bookTitle: {
     marginTop: 16,
@@ -649,6 +1259,62 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     shadowOpacity: theme.isDark ? 0.2 : 0.03,
     shadowRadius: 12,
     elevation: 2,
+  },
+  bookListCoverMini: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  readBadgeBtn: {
+    backgroundColor: theme.primaryLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  readBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: theme.primary,
+    letterSpacing: 0.5,
+  },
+  modalBookCover: {
+    height: 180,
+    width: '100%',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalBookCoverTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  modalBookCoverAuthor: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.textDark,
+  },
+  emptyStateSubtitle: {
+    fontSize: 13,
+    color: theme.textMuted,
+    marginTop: 4,
   },
   listIconBox: {
     width: 54,
@@ -686,9 +1352,22 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
   },
-  videoThumbnail: {
+  videoThumbnailContainer: {
     height: 220,
+    width: '100%',
+    position: 'relative',
     backgroundColor: theme.isDark ? '#27272A' : '#1E293B',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  featuredThumbnailImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  videoOverlayGradient: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -710,7 +1389,19 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     fontWeight: '800',
     color: theme.primary,
     letterSpacing: 1.2,
-    marginBottom: 10,
+  },
+  durationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  durationChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.primary,
   },
   videoTitle: {
     fontSize: 22,
@@ -723,6 +1414,27 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     fontWeight: '600',
     color: theme.textMuted,
     marginTop: 8,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: theme.surface,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  activeCategoryChip: {
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
+  },
+  categoryChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.textMuted,
+  },
+  activeCategoryChipText: {
+    color: '#FFFFFF',
   },
   videoListCard: {
     flexDirection: 'row',
@@ -738,13 +1450,169 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     shadowOpacity: theme.isDark ? 0.2 : 0.02,
     shadowRadius: 8,
   },
-  smallThumbnail: {
+  smallThumbnailContainer: {
     width: 110,
     height: 72,
     borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    marginRight: 16,
+  },
+  smallThumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  smallPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+  },
+  levelTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.primary,
+    textTransform: 'uppercase',
+  },
+  dotSeparator: {
+    fontSize: 11,
+    color: theme.textMuted,
+    marginHorizontal: 6,
+  },
+  categoryTag: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: theme.textMuted,
+  },
+  // Video Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: theme.surface,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    maxHeight: '90%',
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalCategoryBadge: {
+    backgroundColor: theme.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 10,
+  },
+  modalCategoryBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.primary,
+  },
+  modalLevelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textMuted,
+  },
+  closeButton: {
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: theme.isDark ? '#27272A' : '#F1F5F9',
+  },
+  playerContainer: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+  },
+  nativePlayerPlaceholder: {
+    width: '100%',
+    height: 200,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalThumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  nativePlayerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playNowText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+    marginTop: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: theme.textDark,
+    marginTop: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.textMuted,
+    marginTop: 4,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 12,
+  },
+  metaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  metaBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.primary,
+    marginLeft: 6,
+  },
+  descriptionHeader: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.textDark,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  descriptionText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: theme.textMuted,
+  },
+  openYouTubeBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.primary,
+    paddingVertical: 14,
+    borderRadius: 20,
+    marginTop: 16,
+  },
+  openYouTubeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   
   // Game Styles

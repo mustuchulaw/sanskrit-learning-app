@@ -1,7 +1,11 @@
 import React, { useState, useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, Check, X, ArrowRight, Award, Sun, BookOpen, Flame, Trees, Heart } from 'lucide-react-native';
+import {
+  ChevronLeft, Check, X, ArrowRight, Award,
+  Sun, BookOpen, Flame, Trees, Heart, Moon, CloudRain,
+  Feather, Droplets, Compass, Shield, Star, Sparkles, Mountain
+} from 'lucide-react-native';
 import { ThemeContext } from '../../App';
 import { GameProgress } from './khelaState';
 
@@ -11,41 +15,112 @@ interface GuessImageProps {
   onUpdateProgress: (updates: Partial<GameProgress>) => void;
 }
 
-const GUESS_IMAGE_LEVELS = [
+export interface GuessImageLevel {
+  iconName: string;
+  prompt: string;
+  options: string[];
+  answer: string;
+  explanation: string;
+}
+
+const GUESS_IMAGE_DATABASE: GuessImageLevel[] = [
   {
     iconName: 'Sun',
     prompt: 'Identify this celestial body:',
     options: ['चन्द्रः', 'सूर्यः', 'भूमिः', 'नक्षत्रम्'],
     answer: 'सूर्यः',
-    explanation: 'सूर्यः (Sūryaḥ) represents the Sun. In Sanskrit literature, the Sun is revered as a source of energy, life, and light.'
+    explanation: 'सूर्यः (Sūryaḥ) represents the Sun. In Sanskrit literature, the Sun is revered as the source of energy and light.'
   },
   {
     iconName: 'BookOpen',
     prompt: 'What is this physical object?',
     options: ['लेखनी', 'उत्पीठिका', 'मञ्जूषा', 'पुस्तकम्'],
     answer: 'पुस्तकम्',
-    explanation: 'पुस्तकम् (Pustakam) means Book. Knowledge is recorded in pustakas, which are held in high regard in traditional Indian learning.'
+    explanation: 'पुस्तकम् (Pustakam) means Book. Knowledge is preserved in pustakas in traditional Indian learning.'
   },
   {
     iconName: 'Flame',
     prompt: 'Identify this natural element:',
     options: ['जलम्', 'वायुः', 'अग्निः', 'आकाशः'],
     answer: 'अग्निः',
-    explanation: 'अग्निः (Agniḥ) means Fire. Agni is one of the primary Vedic deities representing transformation, purity, and sacrifice.'
+    explanation: 'अग्निः (Agniḥ) means Fire. Agni is one of the primary elements representing transformation and purity.'
   },
   {
     iconName: 'Trees',
     prompt: 'What category of life is this?',
     options: ['वृक्षः', 'पुष्पम्', 'फलम्', 'तृणम्'],
     answer: 'वृक्षः',
-    explanation: 'वृक्षः (Vṛkṣaḥ) means Tree. Sanskrit texts praise trees for selflessly giving shade and fruit to others.'
+    explanation: 'वृक्षः (Vṛkṣaḥ) means Tree. Sanskrit texts praise trees for selflessly giving shade and fruit.'
   },
   {
     iconName: 'Heart',
     prompt: 'What human emotion is symbolized here?',
     options: ['क्रोधः', 'प्रेम', 'दुःखम्', 'भयम्'],
     answer: 'प्रेम',
-    explanation: 'प्रेम (Prema) or स्नेह (Sneha) means Love or affection. It represents binding emotional attachments and pure devotion.'
+    explanation: 'प्रेम (Prema) or स्नेह (Sneha) means Love or affection. It represents emotional devotion.'
+  },
+  {
+    iconName: 'Moon',
+    prompt: 'Identify this night sky body:',
+    options: ['सूर्यः', 'चन्द्रः', 'मेघः', 'तारा'],
+    answer: 'चन्द्रः',
+    explanation: 'चन्द्रः (Candraḥ) means the Moon. Known for its cooling rays (Chandra-Kiran).'
+  },
+  {
+    iconName: 'CloudRain',
+    prompt: 'Identify this weather phenomenon:',
+    options: ['अग्निः', 'मेघः', 'पर्वतः', 'समुद्रः'],
+    answer: 'मेघः',
+    explanation: 'मेघः (Meghaḥ) means Cloud or Rain Cloud. Famous in Kalidasa\'s classical poem Meghaduta.'
+  },
+  {
+    iconName: 'Feather',
+    prompt: 'Identify this sacred bird feather:',
+    options: ['मयूरपिञ्छम्', 'हंसः', 'काकः', 'शुकः'],
+    answer: 'मयूरपिञ्छम्',
+    explanation: 'मयूरपिञ्छम् (Mayūra-piñcham) is a Peacock Feather, traditionally adorned by Lord Krishna.'
+  },
+  {
+    iconName: 'Droplets',
+    prompt: 'What essential life fluid is this?',
+    options: ['अग्निः', 'जलम्', 'दुग्धम्', 'घृतम्'],
+    answer: 'जलम्',
+    explanation: 'जलम् (Jalam) means Water. Also referred to as "जीवनम्" (Life) in classical Sanskrit.'
+  },
+  {
+    iconName: 'Compass',
+    prompt: 'What spatial concept is shown?',
+    options: ['दिशा', 'काली', 'स्थानम्', 'मार्गः'],
+    answer: 'दिशा',
+    explanation: 'दिशा (Diśā) means Direction or Cardinal point (such as East - Prachi, West - Pratichi).'
+  },
+  {
+    iconName: 'Shield',
+    prompt: 'What protective equipment is this?',
+    options: ['खड्गः', 'कवचम्', 'धनुः', 'बाणः'],
+    answer: 'कवचम्',
+    explanation: 'कवचम् (Kavacam) means Shield or Armor. It signifies divine protection and strength.'
+  },
+  {
+    iconName: 'Star',
+    prompt: 'Identify this glowing cosmic entity:',
+    options: ['सूर्यः', 'चन्द्रः', 'नक्षत्रम्', 'ग्रहः'],
+    answer: 'नक्षत्रम्',
+    explanation: 'नक्षत्रम् (Nakṣatram) means Star or Constellation in Vedic astronomy.'
+  },
+  {
+    iconName: 'Sparkles',
+    prompt: 'What quality of radiance is shown?',
+    options: ['अन्धकारः', 'तेजः', 'शान्तिः', 'बलम्'],
+    answer: 'तेजः',
+    explanation: 'तेजः (Tejaḥ) means Luster, Splendor, or Spiritual Energy.'
+  },
+  {
+    iconName: 'Mountain',
+    prompt: 'What geographical landform is this?',
+    options: ['नदी', 'समुद्रः', 'पर्वतः', 'वनम्'],
+    answer: 'पर्वतः',
+    explanation: 'पर्वतः (Parvataḥ) means Mountain or Hill, such as the sacred Himalayas.'
   }
 ];
 
@@ -55,27 +130,54 @@ const IconMap: { [key: string]: React.ComponentType<any> } = {
   Flame: Flame,
   Trees: Trees,
   Heart: Heart,
+  Moon: Moon,
+  CloudRain: CloudRain,
+  Feather: Feather,
+  Droplets: Droplets,
+  Compass: Compass,
+  Shield: Shield,
+  Star: Star,
+  Sparkles: Sparkles,
+  Mountain: Mountain,
 };
 
 const XP_PER_LEVEL = 15;
 
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function generateDynamicRound(): GuessImageLevel[] {
+  const shuffledDb = shuffleArray(GUESS_IMAGE_DATABASE);
+  return shuffledDb.slice(0, 5).map(lvl => ({
+    ...lvl,
+    options: shuffleArray(lvl.options)
+  }));
+}
+
 export default function GuessImage({ progress, onBack, onUpdateProgress }: GuessImageProps) {
   const { theme } = useContext(ThemeContext);
-  
-  const currentLevelIndex = Math.min(progress.guessImage.currentLevel, GUESS_IMAGE_LEVELS.length - 1);
-  const isGameFinished = progress.guessImage.currentLevel >= GUESS_IMAGE_LEVELS.length;
-  
-  const levelData = GUESS_IMAGE_LEVELS[currentLevelIndex];
-  
+
+  const [activeLevels, setActiveLevels] = useState<GuessImageLevel[]>(() => generateDynamicRound());
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+
+  const isGameFinished = currentStepIndex >= activeLevels.length;
+  const levelData = activeLevels[Math.min(currentStepIndex, activeLevels.length - 1)];
+
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
 
-  const IconComponent = levelData ? IconMap[levelData.iconName] : Sun;
+  const IconComponent = levelData ? IconMap[levelData.iconName] || Sun : Sun;
 
   const handleSelectOption = (option: string) => {
     if (hasAnswered) return;
-    
+
     const correct = option === levelData.answer;
     setSelectedOption(option);
     setHasAnswered(true);
@@ -83,32 +185,27 @@ export default function GuessImage({ progress, onBack, onUpdateProgress }: Guess
   };
 
   const handleNextLevel = () => {
-    const nextLevel = progress.guessImage.currentLevel + 1;
-    // Earn XP only if they got it right on the first try
+    const nextStep = currentStepIndex + 1;
     const xpReward = isCorrect ? XP_PER_LEVEL : 0;
     const newXP = progress.totalXP + xpReward;
 
     onUpdateProgress({
       totalXP: newXP,
       guessImage: {
-        currentLevel: nextLevel,
-        highScore: Math.max(progress.guessImage.highScore, nextLevel * 15),
+        currentLevel: progress.guessImage.currentLevel + 1,
+        highScore: Math.max(progress.guessImage.highScore, (progress.guessImage.currentLevel + 1) * 15),
       }
     });
 
-    // Reset local state
+    setCurrentStepIndex(nextStep);
     setSelectedOption(null);
     setHasAnswered(false);
     setIsCorrect(false);
   };
 
-  const handleRestartGame = () => {
-    onUpdateProgress({
-      guessImage: {
-        currentLevel: 0,
-        highScore: progress.guessImage.highScore,
-      }
-    });
+  const handleNextRound = () => {
+    setActiveLevels(generateDynamicRound());
+    setCurrentStepIndex(0);
     setSelectedOption(null);
     setHasAnswered(false);
     setIsCorrect(false);
@@ -121,22 +218,22 @@ export default function GuessImage({ progress, onBack, onUpdateProgress }: Guess
           <LinearGradient colors={['#F59E0B', '#B45309']} style={styles.trophyIcon}>
             <Award size={48} color="#FFF" />
           </LinearGradient>
-          <Text style={[styles.successTitle, { color: theme.textDark }]}>Guess the Image Complete!</Text>
+          <Text style={[styles.successTitle, { color: theme.textDark }]}>Picture Quiz Complete!</Text>
           <Text style={[styles.successSubtitle, { color: theme.textMuted }]}>
-            Superb work! You identified all visual elements in Sanskrit.
+            Fantastic! You identified all Sanskrit symbol and picture challenges in this round.
           </Text>
           <Text style={[styles.xpEarnedText, { color: theme.primary }]}>
-            Vocabulary Mastered 🎯
+            +{activeLevels.length * XP_PER_LEVEL} XP Earned
           </Text>
-          
-          <TouchableOpacity activeOpacity={0.8} style={styles.primaryBtn} onPress={onBack}>
+
+          <TouchableOpacity activeOpacity={0.8} style={styles.primaryBtn} onPress={handleNextRound}>
             <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.btnGradient}>
-              <Text style={styles.btnText}>Back to Game Room</Text>
+              <Text style={styles.btnText}>Play Next Round (New Quiz Set)</Text>
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity activeOpacity={0.7} style={styles.secondaryBtn} onPress={handleRestartGame}>
-            <Text style={[styles.secondaryBtnText, { color: theme.textMuted }]}>Play Again</Text>
+          <TouchableOpacity activeOpacity={0.7} style={styles.secondaryBtn} onPress={onBack}>
+            <Text style={[styles.secondaryBtnText, { color: theme.textMuted }]}>Back to Game Room</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -151,7 +248,7 @@ export default function GuessImage({ progress, onBack, onUpdateProgress }: Guess
           <ChevronLeft size={22} color={theme.textDark} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.textDark }]}>
-          Level {currentLevelIndex + 1}/{GUESS_IMAGE_LEVELS.length}
+          Level {currentStepIndex + 1}/{activeLevels.length}
         </Text>
         <View style={[styles.pointsBadge, { backgroundColor: theme.primaryLight }]}>
           <Text style={[styles.pointsText, { color: theme.isDark ? '#FFF' : theme.primaryDark }]}>
@@ -160,78 +257,86 @@ export default function GuessImage({ progress, onBack, onUpdateProgress }: Guess
         </View>
       </View>
 
-      {/* Image Display Card */}
-      <View style={[styles.imageDisplayCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <LinearGradient
-          colors={theme.isDark ? ['#1F2937', '#111827'] : ['#F3F4F6', '#E5E7EB']}
-          style={styles.imageInnerBg}
-        >
-          {IconComponent && <IconComponent size={80} color={theme.primary} />}
-        </LinearGradient>
-        <Text style={[styles.promptText, { color: theme.textMuted }]}>{levelData.prompt}</Text>
+      {/* Image / Icon Prompt Box */}
+      <View style={[styles.promptCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View style={styles.iconWrapper}>
+          <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.iconGradient}>
+            <IconComponent size={56} color="#FFF" />
+          </LinearGradient>
+        </View>
+        <Text style={[styles.promptSubtitle, { color: theme.textMuted }]}>{levelData.prompt}</Text>
       </View>
 
-      {/* Options Grid (2x2) */}
-      <View style={styles.optionsGrid}>
+      {/* Options Grid */}
+      <View style={styles.optionsContainer}>
         {levelData.options.map((option) => {
           const isSelected = selectedOption === option;
-          const isCorrectAnswer = option === levelData.answer;
-          
-          let btnStyle = { backgroundColor: theme.surface, borderColor: theme.border };
+          let optionStyle = { backgroundColor: theme.surface, borderColor: theme.border };
           let textColor = theme.textDark;
-          let showIcon = null;
 
           if (hasAnswered) {
-            if (isCorrectAnswer) {
-              btnStyle = { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: '#10B981' };
+            if (option === levelData.answer) {
+              optionStyle = { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: '#10B981' };
               textColor = '#10B981';
-              showIcon = <Check size={18} color="#10B981" />;
-            } else if (isSelected) {
-              btnStyle = { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: '#EF4444' };
+            } else if (isSelected && !isCorrect) {
+              optionStyle = { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: '#EF4444' };
               textColor = '#EF4444';
-              showIcon = <X size={18} color="#EF4444" />;
-            } else {
-              btnStyle = { backgroundColor: theme.surface, borderColor: theme.border };
-              textColor = theme.textMuted;
             }
           }
 
           return (
             <TouchableOpacity
               key={option}
-              activeOpacity={0.7}
-              style={[styles.optionBtn, btnStyle]}
+              activeOpacity={0.8}
+              style={[styles.optionBtn, optionStyle]}
               onPress={() => handleSelectOption(option)}
-              disabled={hasAnswered}
             >
               <Text style={[styles.optionText, { color: textColor }]}>{option}</Text>
-              {showIcon && <View style={styles.optionIcon}>{showIcon}</View>}
+              {hasAnswered && option === levelData.answer && (
+                <Check size={20} color="#10B981" />
+              )}
+              {hasAnswered && isSelected && !isCorrect && (
+                <X size={20} color="#EF4444" />
+              )}
             </TouchableOpacity>
           );
         })}
       </View>
 
-      {/* Answer Verification & Explanation */}
+      {/* Explanation Panel */}
       {hasAnswered && (
         <View style={[
-          styles.explanationCard, 
-          { 
-            backgroundColor: theme.surface, 
-            borderColor: isCorrect ? '#10B981' : '#EF4444' 
+          styles.explanationCard,
+          {
+            backgroundColor: theme.surface,
+            borderColor: isCorrect ? '#10B981' : '#EF4444'
           }
         ]}>
-          <Text style={[styles.explanationHeading, { color: isCorrect ? '#10B981' : '#EF4444' }]}>
-            {isCorrect ? 'Correct! (शुद्धम्)' : 'Wrong! (अशुद्धम्)'}
-          </Text>
+          <View style={styles.headingRow}>
+            {isCorrect ? (
+              <>
+                <View style={styles.successTick}>
+                  <Check size={18} color="#FFF" />
+                </View>
+                <Text style={[styles.explanationHeading, { color: theme.textDark }]}>Correct! (सम्यक्)</Text>
+              </>
+            ) : (
+              <>
+                <View style={styles.errorCross}>
+                  <X size={18} color="#FFF" />
+                </View>
+                <Text style={[styles.explanationHeading, { color: theme.textDark }]}>Incorrect (अशुद्धम्)</Text>
+              </>
+            )}
+          </View>
+
           <Text style={[styles.explanationText, { color: theme.textMuted }]}>
             {levelData.explanation}
           </Text>
-          
+
           <TouchableOpacity activeOpacity={0.8} style={styles.primaryBtn} onPress={handleNextLevel}>
             <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.btnGradient}>
-              <Text style={styles.btnText}>
-                {isGameFinished ? 'Finish Game' : 'Next Level'}
-              </Text>
+              <Text style={styles.btnText}>Next Question</Text>
               <ArrowRight size={18} color="#FFF" style={{ marginLeft: 8 }} />
             </LinearGradient>
           </TouchableOpacity>
@@ -252,6 +357,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 40,
+    paddingHorizontal: 24,
   },
   card: {
     borderRadius: 32,
@@ -318,69 +424,49 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
-  imageDisplayCard: {
+  promptCard: {
     borderRadius: 32,
     padding: 24,
     alignItems: 'center',
     marginBottom: 24,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.03,
-    shadowRadius: 16,
-    elevation: 3,
   },
-  imageInnerBg: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#0F766E',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  promptText: {
-    fontSize: 15,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 28,
-  },
-  optionBtn: {
-    width: '48%',
-    height: 80,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
+  iconWrapper: {
     marginBottom: 16,
-    paddingHorizontal: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.01,
-    shadowRadius: 4,
-    elevation: 1,
-    position: 'relative',
   },
-  optionText: {
-    fontSize: 15,
+  iconGradient: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  promptSubtitle: {
+    fontSize: 16,
     fontWeight: '700',
     textAlign: 'center',
-    lineHeight: 22,
   },
-  optionIcon: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
+  optionsContainer: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  optionBtn: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  optionText: {
+    fontSize: 18,
+    fontWeight: '700',
   },
   explanationCard: {
     borderRadius: 24,
@@ -388,16 +474,38 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     marginBottom: 20,
   },
+  headingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  successTick: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  errorCross: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
   explanationHeading: {
-    fontSize: 18,
-    fontWeight: '900',
-    marginBottom: 8,
+    fontSize: 17,
+    fontWeight: '800',
   },
   explanationText: {
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '500',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   primaryBtn: {
     height: 56,
