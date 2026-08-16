@@ -2,12 +2,13 @@ import React, { useState, createContext, useContext, useMemo, useEffect } from '
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
   ScrollView, StatusBar, Dimensions, useColorScheme, Image,
-  Modal, Linking, Platform
+  Modal, Linking, Platform, ActivityIndicator
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+
 import { 
   ArrowRightLeft, BookOpen, PlayCircle, Mic, 
   Copy, Volume2, Search, Play, BookText, Sparkles, Sun, Moon, Gamepad2, Trophy,
@@ -109,19 +110,101 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 // ==========================================
-// MODULE 1: ANUVADAK (TRANSLATOR)
+// MODULE 1: ANUVADAK (TRANSLATOR - SARVAM.AI)
 // ==========================================
+interface LanguageOption {
+  code: string;
+  name: string;
+  nativeName: string;
+}
+
+const LANGUAGES: LanguageOption[] = [
+  { code: 'en-IN', name: 'English', nativeName: 'English' },
+  { code: 'sa-IN', name: 'Sanskrit', nativeName: 'संस्कृतम्' },
+  { code: 'hi-IN', name: 'Hindi', nativeName: 'हिन्दी' },
+  { code: 'mr-IN', name: 'Marathi', nativeName: 'मराठी' },
+];
+
+const SARVAM_API_KEY = 'sk_d42jxzg7_TjLhFIBpwBAX9YyDSFRGSh0u';
+const SARVAM_URL = 'https://api.sarvam.ai/translate';
+
+async function translateWithSarvam(
+  text: string,
+  sourceCode: string,
+  targetCode: string
+): Promise<string> {
+  if (!text.trim()) return '';
+  try {
+    const res = await fetch(SARVAM_URL, {
+      method: 'POST',
+      headers: {
+        'api-subscription-key': SARVAM_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        input: text.trim(),
+        source_language_code: sourceCode,
+        target_language_code: targetCode,
+        model: 'sarvam-translate:v1'
+      })
+    });
+    const data = await res.json();
+    if (data && data.translated_text) {
+      return data.translated_text;
+    }
+    return '';
+  } catch (err) {
+    console.error('Sarvam Translation Error:', err);
+    return '';
+  }
+}
+
 function TranslatorScreen() {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const styles = useMemo(() => getStyles(theme), [theme]);
   
-  const [inputText, setInputText] = useState('');
-  const [sourceLang, setSourceLang] = useState('English');
-  const [targetLang, setTargetLang] = useState('Sanskrit (संस्कृतम्)');
+  const [sourceLangCode, setSourceLangCode] = useState<string>('en-IN');
+  const [targetLangCode, setTargetLangCode] = useState<string>('sa-IN');
+  const [inputText, setInputText] = useState<string>('');
+  const [translatedText, setTranslatedText] = useState<string>('');
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
+
+  const sourceLang = LANGUAGES.find(l => l.code === sourceLangCode) || LANGUAGES[0];
+  const targetLang = LANGUAGES.find(l => l.code === targetLangCode) || LANGUAGES[1];
+
+  // Debounced translation effect using Sarvam.ai
+  useEffect(() => {
+    if (!inputText.trim()) {
+      setTranslatedText('');
+      setIsTranslating(false);
+      return;
+    }
+
+    setIsTranslating(true);
+    const timer = setTimeout(async () => {
+      const result = await translateWithSarvam(inputText, sourceLangCode, targetLangCode);
+      setTranslatedText(result);
+      setIsTranslating(false);
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [inputText, sourceLangCode, targetLangCode]);
 
   const swapLanguages = () => {
-    setSourceLang(targetLang);
-    setTargetLang(sourceLang);
+    const oldSource = sourceLangCode;
+    const oldTarget = targetLangCode;
+    setSourceLangCode(oldTarget);
+    setTargetLangCode(oldSource);
+    setInputText(translatedText);
+    setTranslatedText(inputText);
+  };
+
+  const handleCopy = () => {
+    if (translatedText) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (
@@ -131,7 +214,7 @@ function TranslatorScreen() {
           <Image source={require('./assets/logo.png')} style={styles.logoImage} />
           <View>
             <Text style={styles.headerTitle}>Anuvadak</Text>
-            <Text style={styles.headerSubtitle}>Translate & Learn</Text>
+            <Text style={styles.headerSubtitle}>Sarvam AI Neural Translator</Text>
           </View>
         </View>
         <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
@@ -140,25 +223,59 @@ function TranslatorScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Source Language Selection Pills */}
+        <Text style={[styles.sectionTitle, { fontSize: 13, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8, color: theme.textMuted }]}>
+          From Language
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+          {LANGUAGES.map((lang) => {
+            const isSelected = sourceLangCode === lang.code;
+            return (
+              <TouchableOpacity
+                key={`src-${lang.code}`}
+                onPress={() => {
+                  if (lang.code === targetLangCode) {
+                    setTargetLangCode(sourceLangCode);
+                  }
+                  setSourceLangCode(lang.code);
+                }}
+                style={[
+                  styles.categoryChip,
+                  isSelected && styles.activeCategoryChip
+                ]}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  isSelected && styles.activeCategoryChipText
+                ]}>
+                  {lang.name} ({lang.nativeName})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Source Text Card */}
         <View style={styles.translationCard}>
           <View style={styles.langHeader}>
-            <Text style={styles.langText}>{sourceLang}</Text>
-            <TouchableOpacity><Volume2 size={20} color={theme.textMuted} /></TouchableOpacity>
+            <Text style={styles.langText}>{sourceLang.name} ({sourceLang.nativeName})</Text>
+            {inputText.length > 0 && (
+              <TouchableOpacity onPress={() => setInputText('')}>
+                <X size={18} color={theme.textMuted} />
+              </TouchableOpacity>
+            )}
           </View>
           <TextInput
             style={styles.textInput}
-            placeholder="Enter text to translate..."
+            placeholder={`Type text in ${sourceLang.name} to translate...`}
             placeholderTextColor={theme.textMuted}
             multiline
             value={inputText}
             onChangeText={setInputText}
           />
-          <View style={styles.cardFooter}>
-            <TouchableOpacity style={styles.iconBtn}><Mic size={20} color={theme.textDark} /></TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}><Copy size={20} color={theme.textDark} /></TouchableOpacity>
-          </View>
         </View>
 
+        {/* Swap Languages Button */}
         <View style={styles.swapContainer}>
           <TouchableOpacity activeOpacity={0.8} onPress={swapLanguages}>
             <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.swapBtn}>
@@ -167,21 +284,80 @@ function TranslatorScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Target Language Selection Pills */}
+        <Text style={[styles.sectionTitle, { fontSize: 13, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8, color: theme.textMuted }]}>
+          To Language
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+          {LANGUAGES.map((lang) => {
+            const isSelected = targetLangCode === lang.code;
+            return (
+              <TouchableOpacity
+                key={`tgt-${lang.code}`}
+                onPress={() => {
+                  if (lang.code === sourceLangCode) {
+                    setSourceLangCode(targetLangCode);
+                  }
+                  setTargetLangCode(lang.code);
+                }}
+                style={[
+                  styles.categoryChip,
+                  isSelected && styles.activeCategoryChip
+                ]}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  isSelected && styles.activeCategoryChipText
+                ]}>
+                  {lang.name} ({lang.nativeName})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Target Translation Output Card */}
         <LinearGradient
           colors={['#115E59', '#042F2E']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={[styles.translationCard, styles.outputCard]}
         >
           <View style={styles.langHeader}>
-            <Text style={[styles.langText, { color: '#CCFBF1' }]}>{targetLang}</Text>
-            <TouchableOpacity><Volume2 size={20} color="#CCFBF1" /></TouchableOpacity>
+            <Text style={[styles.langText, { color: '#CCFBF1' }]}>
+              {targetLang.name} ({targetLang.nativeName})
+            </Text>
+            {isTranslating && (
+              <ActivityIndicator size="small" color="#CCFBF1" />
+            )}
           </View>
+
           <Text style={[styles.outputText, { color: '#FFFFFF' }]}>
-            {inputText ? "नमस्ते, कथम् अस्ति भवान्?" : "Translation will appear here..."}
+            {inputText.trim() 
+              ? (isTranslating && !translatedText ? 'Translating via Sarvam AI...' : translatedText || 'Translating...')
+              : `Translation in ${targetLang.name} will appear here when you type...`
+            }
           </Text>
-          <View style={styles.cardFooter}>
-            <TouchableOpacity style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-              <Copy size={20} color="#CCFBF1" />
+
+          <View style={styles.outputCardFooter}>
+            <View style={styles.sarvamBadge}>
+              <Sparkles size={13} color="#CCFBF1" style={{ marginRight: 5 }} />
+              <Text style={styles.sarvamBadgeText}>Sarvam.ai</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[
+                styles.copyButton, 
+                copied && styles.copyButtonActive,
+                !translatedText.trim() && { opacity: 0.5 }
+              ]}
+              onPress={handleCopy}
+              disabled={!translatedText.trim()}
+              activeOpacity={0.8}
+            >
+              <Copy size={14} color={copied ? '#042F2E' : '#CCFBF1'} style={{ marginRight: 6 }} />
+              <Text style={[styles.copyButtonText, copied && styles.copyButtonTextActive]}>
+                {copied ? 'Copied!' : 'Copy'}
+              </Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -933,6 +1109,52 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     padding: 10,
     borderRadius: 16,
     backgroundColor: theme.isDark ? theme.bgLight : 'rgba(0,0,0,0.03)',
+  },
+  outputCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  sarvamBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  sarvamBadgeText: {
+    color: '#CCFBF1',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(204,251,241,0.25)',
+  },
+  copyButtonActive: {
+    backgroundColor: '#CCFBF1',
+    borderColor: '#CCFBF1',
+  },
+  copyButtonText: {
+    color: '#CCFBF1',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  copyButtonTextActive: {
+    color: '#042F2E',
   },
   swapContainer: {
     alignItems: 'center',
