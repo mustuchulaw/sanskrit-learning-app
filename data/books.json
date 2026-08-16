@@ -1,0 +1,38 @@
+[
+  {
+    "id": "b1",
+    "title": "Sanskrit Grammar & Literature Guide",
+    "author": "Panini & Classical Scholars",
+    "category": "Grammar",
+    "driveUrl": "https://drive.google.com/drive/folders/1bZ0iIEO81StrMZDhfZh0MQz3NjhrzpGZ?usp=sharing",
+    "pages": "120 Pages",
+    "fileType": "PDF Document",
+    "colors": ["#0F766E", "#042F2E"],
+    "isFeatured": true,
+    "description": "Comprehensive reference guide covering Sanskrit phonetics, declensions, verb conjugations, and essential rules of Paninian grammar."
+  },
+  {
+    "id": "b2",
+    "title": "Bhagavad Gita - Text & Commentary",
+    "author": "Maharishi Vyasa",
+    "category": "Scriptures",
+    "driveUrl": "https://drive.google.com/drive/folders/1bZ0iIEO81StrMZDhfZh0MQz3NjhrzpGZ?usp=sharing",
+    "pages": "240 Pages",
+    "fileType": "PDF Document",
+    "colors": ["#B45309", "#78350F"],
+    "isFeatured": false,
+    "description": "Original Sanskrit verses of the Bhagavad Gita along with word-by-word meanings, transliteration, and spiritual commentary."
+  },
+  {
+    "id": "b3",
+    "title": "Vedic Chants & Sacred Stotram Anthology",
+    "author": "Vedic Rishis",
+    "category": "Chants",
+    "driveUrl": "https://drive.google.com/drive/folders/1bZ0iIEO81StrMZDhfZh0MQz3NjhrzpGZ?usp=sharing",
+    "pages": "85 Pages",
+    "fileType": "PDF Document",
+    "colors": ["#6D28D9", "#4C1D95"],
+    "isFeatured": false,
+    "description": "Curated collection of sacred Vedic chants, Suktams, and Stotrams with accurate Swara notation marks for authentic recitation."
+  }
+]
