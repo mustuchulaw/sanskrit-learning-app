@@ -10,8 +10,8 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { 
-  ArrowRightLeft, BookOpen, PlayCircle, Mic, 
-  Copy, Volume2, Search, Play, BookText, Sparkles, Sun, Moon, Gamepad2, Trophy,
+  ArrowRightLeft, BookOpen, PlayCircle, 
+  Copy, Search, Play, BookText, Sparkles, Sun, Moon, Gamepad2, Trophy,
   X, ExternalLink, Clock, Download
 } from 'lucide-react-native';
 
@@ -567,7 +567,7 @@ function LibraryScreen() {
                   <Text style={styles.descriptionText}>{activeBook.description}</Text>
                   <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={[styles.metaBadgeText, { color: theme.textMuted, marginLeft: 0 }]}>
-                      Format: {activeBook.fileType} • Hosted on Google Drive
+                      Format: {activeBook.fileType} • Hosted on Supabase Storage
                     </Text>
                   </View>
                 </ScrollView>
@@ -767,17 +767,16 @@ function VideoLessonsScreen() {
                 {/* Embedded Video Player */}
                 <View style={styles.playerContainer}>
                   {Platform.OS === 'web' ? (
-                    // @ts-ignore
-                    <iframe
-                      width="100%"
-                      height="220"
-                      src={`https://www.youtube.com/embed/${activeVideo.youtubeId}?autoplay=1`}
-                      title={activeVideo.title}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      style={{ borderRadius: 16, border: 'none' }}
-                    />
+                    React.createElement('iframe', {
+                      width: '100%',
+                      height: '220',
+                      src: `https://www.youtube.com/embed/${activeVideo.youtubeId}?autoplay=1`,
+                      title: activeVideo.title,
+                      frameBorder: '0',
+                      allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
+                      allowFullScreen: true,
+                      style: { borderRadius: 16, border: 'none' }
+                    })
                   ) : (
                     <TouchableOpacity 
                       activeOpacity={0.9} 
