@@ -1,38 +1,47 @@
 [
   {
     "id": "b1",
-    "title": "Sanskrit Grammar & Literature Guide",
-    "author": "Panini & Classical Scholars",
-    "category": "Grammar",
-    "driveUrl": "https://drive.google.com/drive/folders/1bZ0iIEO81StrMZDhfZh0MQz3NjhrzpGZ?usp=sharing",
-    "pages": "120 Pages",
+    "title": "Atharva Veda (अथर्ववेदः)",
+    "author": "Atharvan & Angiras Rishis",
+    "category": "Scriptures",
+    "driveUrl": "https://mhxvqtifeeewozhyaotl.supabase.co/storage/v1/object/public/sans/atharva-ved.pdf",
+    "pages": "Supabase PDF",
     "fileType": "PDF Document",
-    "colors": ["#0F766E", "#042F2E"],
+    "colors": [
+      "#0F766E",
+      "#042F2E"
+    ],
     "isFeatured": true,
-    "description": "Comprehensive reference guide covering Sanskrit phonetics, declensions, verb conjugations, and essential rules of Paninian grammar."
+    "description": "The fourth Veda containing ancient mantras, hymns for well-being, philosophical insights, and Vedic incantations."
   },
   {
     "id": "b2",
-    "title": "Bhagavad Gita - Text & Commentary",
-    "author": "Maharishi Vyasa",
-    "category": "Scriptures",
-    "driveUrl": "https://drive.google.com/drive/folders/1bZ0iIEO81StrMZDhfZh0MQz3NjhrzpGZ?usp=sharing",
-    "pages": "240 Pages",
+    "title": "Vaimanika Shastra (वैमानिक शास्त्र)",
+    "author": "Maharshi Bharadwaja",
+    "category": "Aeronautics & Science",
+    "driveUrl": "https://mhxvqtifeeewozhyaotl.supabase.co/storage/v1/object/public/sans/vimanika-shaster.pdf",
+    "pages": "13.7 MB • PDF",
     "fileType": "PDF Document",
-    "colors": ["#B45309", "#78350F"],
+    "colors": [
+      "#B45309",
+      "#78350F"
+    ],
     "isFeatured": false,
-    "description": "Original Sanskrit verses of the Bhagavad Gita along with word-by-word meanings, transliteration, and spiritual commentary."
+    "description": "An ancient Sanskrit treatise on aeronautics, vimana construction, metallurgy, propulsion systems, and ancient Indian mechanical engineering."
   },
   {
     "id": "b3",
-    "title": "Vedic Chants & Sacred Stotram Anthology",
-    "author": "Vedic Rishis",
-    "category": "Chants",
-    "driveUrl": "https://drive.google.com/drive/folders/1bZ0iIEO81StrMZDhfZh0MQz3NjhrzpGZ?usp=sharing",
-    "pages": "85 Pages",
+    "title": "Vivekachudamani (विवेकचूडामणिः)",
+    "author": "Adi Shankaracharya",
+    "category": "Philosophy",
+    "driveUrl": "https://mhxvqtifeeewozhyaotl.supabase.co/storage/v1/object/public/sans/vivakchudamani.pdf",
+    "pages": "Supabase PDF",
     "fileType": "PDF Document",
-    "colors": ["#6D28D9", "#4C1D95"],
+    "colors": [
+      "#6D28D9",
+      "#4C1D95"
+    ],
     "isFeatured": false,
-    "description": "Curated collection of sacred Vedic chants, Suktams, and Stotrams with accurate Swara notation marks for authentic recitation."
+    "description": "Famous 580-verse Sanskrit poem by Adi Shankaracharya explaining Self-realization, discrimination (Viveka), and Advaita Vedanta philosophy."
   }
 ]
