@@ -1,7 +1,8 @@
 import React, { useState, createContext, useContext, useMemo, useEffect } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  ScrollView, StatusBar, Dimensions, useColorScheme, Image
+  ScrollView, StatusBar, Dimensions, useColorScheme, Image,
+  Modal, Linking, Platform
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -9,7 +10,8 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
   ArrowRightLeft, BookOpen, PlayCircle, Mic, 
-  Copy, Volume2, Search, Play, BookText, Sparkles, Sun, Moon, Gamepad2, Trophy
+  Copy, Volume2, Search, Play, BookText, Sparkles, Sun, Moon, Gamepad2, Trophy,
+  X, ExternalLink, Clock
 } from 'lucide-react-native';
 
 import KhelaMenu from './components/khela/KhelaMenu';
@@ -17,6 +19,20 @@ import WordChain from './components/khela/WordChain';
 import GuessImage from './components/khela/GuessImage';
 import CompleteSentence from './components/khela/CompleteSentence';
 import { GameProgress, INITIAL_PROGRESS, loadProgress, saveProgress } from './components/khela/khelaState';
+import videoData from './data/videos.json';
+
+interface VideoItem {
+  id: string;
+  youtubeId: string;
+  title: string;
+  subtitle: string;
+  category: string;
+  duration: string;
+  level: string;
+  isFeatured?: boolean;
+  description: string;
+}
+
 
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get('window');
@@ -234,6 +250,31 @@ function VideoLessonsScreen() {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const styles = useMemo(() => getStyles(theme), [theme]);
 
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
+
+  const categories = ['All', 'Pronunciation', 'Grammar', 'Conversation', 'Chanting'];
+
+  const videosList = videoData as VideoItem[];
+  const featuredVideo = videosList.find((v) => v.isFeatured) || videosList[0];
+
+  const filteredVideos = videosList.filter((video) => {
+    if (selectedCategory === 'All') return true;
+    return video.category.toLowerCase() === selectedCategory.toLowerCase();
+  });
+
+  const openVideo = (video: VideoItem) => {
+    setActiveVideo(video);
+  };
+
+  const closeVideo = () => {
+    setActiveVideo(null);
+  };
+
+  const handleOpenYouTube = (youtubeId: string) => {
+    Linking.openURL(`https://www.youtube.com/watch?v=${youtubeId}`);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -250,35 +291,186 @@ function VideoLessonsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity activeOpacity={0.9} style={styles.featuredVideo}>
-          <View style={styles.videoThumbnail}>
-            <BlurView intensity={40} tint={theme.blurTint} style={styles.playButtonGlass}>
-              <Play size={28} color="#FFF" fill="#FFF" style={{ marginLeft: 4 }} />
-            </BlurView>
-          </View>
-          <View style={styles.videoInfo}>
-            <Text style={styles.videoBadge}>NEW EPISODE</Text>
-            <Text style={styles.videoTitle}>Mastering Sanskrit Pronunciation</Text>
-            <Text style={styles.videoSubtitle}>Beginner • 15 Mins</Text>
-          </View>
-        </TouchableOpacity>
+        {/* Featured Video Card */}
+        {featuredVideo && (
+          <TouchableOpacity 
+            activeOpacity={0.9} 
+            style={styles.featuredVideo}
+            onPress={() => openVideo(featuredVideo)}
+          >
+            <View style={styles.videoThumbnailContainer}>
+              <Image 
+                source={{ uri: `https://img.youtube.com/vi/${featuredVideo.youtubeId}/hqdefault.jpg` }}
+                style={styles.featuredThumbnailImage}
+                resizeMode="cover"
+              />
+              <View style={styles.videoOverlayGradient}>
+                <BlurView intensity={40} tint={theme.blurTint} style={styles.playButtonGlass}>
+                  <Play size={28} color="#FFF" fill="#FFF" style={{ marginLeft: 4 }} />
+                </BlurView>
+              </View>
+            </View>
+            <View style={styles.videoInfo}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={styles.videoBadge}>NEW EPISODE • FEATURED</Text>
+                <View style={styles.durationChip}>
+                  <Clock size={12} color={theme.primary} style={{ marginRight: 4 }} />
+                  <Text style={styles.durationChipText}>{featuredVideo.duration}</Text>
+                </View>
+              </View>
+              <Text style={styles.videoTitle}>{featuredVideo.title}</Text>
+              <Text style={styles.videoSubtitle}>{featuredVideo.subtitle}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
-        <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Grammar Basics</Text>
-        {[1, 2, 3].map((item) => (
-          <TouchableOpacity activeOpacity={0.7} key={item} style={styles.videoListCard}>
-            <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.smallThumbnail}>
-              <PlayCircle size={24} color="#FFF" />
-            </LinearGradient>
+        {/* Category Filters */}
+        <Text style={[styles.sectionTitle, { marginTop: 28, marginBottom: 14 }]}>Explore Categories</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+          {categories.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                onPress={() => setSelectedCategory(cat)}
+                style={[
+                  styles.categoryChip,
+                  isSelected && styles.activeCategoryChip
+                ]}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  isSelected && styles.activeCategoryChipText
+                ]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Video List */}
+        <Text style={[styles.sectionTitle, { marginBottom: 14 }]}>
+          {selectedCategory === 'All' ? 'All Masterclasses' : `${selectedCategory} Videos`}
+        </Text>
+
+        {filteredVideos.map((video) => (
+          <TouchableOpacity 
+            activeOpacity={0.8} 
+            key={video.id} 
+            style={styles.videoListCard}
+            onPress={() => openVideo(video)}
+          >
+            <View style={styles.smallThumbnailContainer}>
+              <Image 
+                source={{ uri: `https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg` }}
+                style={styles.smallThumbnailImage}
+                resizeMode="cover"
+              />
+              <View style={styles.smallPlayOverlay}>
+                <PlayCircle size={24} color="#FFF" />
+              </View>
+            </View>
             <View style={styles.listInfo}>
-              <Text style={styles.listTitle}>Understanding Noun Cases (Vibhakti)</Text>
-              <Text style={styles.listSubtitle}>Lesson {item} • 10 Mins</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={styles.levelTag}>{video.level}</Text>
+                <Text style={styles.dotSeparator}>•</Text>
+                <Text style={styles.categoryTag}>{video.category}</Text>
+              </View>
+              <Text style={styles.listTitle} numberOfLines={2}>{video.title}</Text>
+              <Text style={styles.listSubtitle}>{video.duration}</Text>
             </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* Interactive Video Player Modal */}
+      <Modal
+        visible={!!activeVideo}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeVideo}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {activeVideo && (
+              <>
+                <View style={styles.modalHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <View style={styles.modalCategoryBadge}>
+                      <Text style={styles.modalCategoryBadgeText}>{activeVideo.category}</Text>
+                    </View>
+                    <Text style={styles.modalLevelText}>{activeVideo.level}</Text>
+                  </View>
+                  <TouchableOpacity onPress={closeVideo} style={styles.closeButton}>
+                    <X size={22} color={theme.textDark} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Embedded Video Player */}
+                <View style={styles.playerContainer}>
+                  {Platform.OS === 'web' ? (
+                    // @ts-ignore
+                    <iframe
+                      width="100%"
+                      height="220"
+                      src={`https://www.youtube.com/embed/${activeVideo.youtubeId}?autoplay=1`}
+                      title={activeVideo.title}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      style={{ borderRadius: 16, border: 'none' }}
+                    />
+                  ) : (
+                    <TouchableOpacity 
+                      activeOpacity={0.9} 
+                      style={styles.nativePlayerPlaceholder}
+                      onPress={() => handleOpenYouTube(activeVideo.youtubeId)}
+                    >
+                      <Image 
+                        source={{ uri: `https://img.youtube.com/vi/${activeVideo.youtubeId}/hqdefault.jpg` }}
+                        style={styles.modalThumbnailImage}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.nativePlayerOverlay}>
+                        <PlayCircle size={56} color="#FFF" />
+                        <Text style={styles.playNowText}>Tap to Watch on YouTube</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <ScrollView style={{ marginTop: 16, maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+                  <Text style={styles.modalTitle}>{activeVideo.title}</Text>
+                  <Text style={styles.modalSubtitle}>{activeVideo.subtitle}</Text>
+
+                  <View style={styles.metaRow}>
+                    <View style={styles.metaBadge}>
+                      <Clock size={14} color={theme.primary} />
+                      <Text style={styles.metaBadgeText}>{activeVideo.duration}</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.descriptionHeader}>About this Masterclass</Text>
+                  <Text style={styles.descriptionText}>{activeVideo.description}</Text>
+                </ScrollView>
+
+                <TouchableOpacity 
+                  style={styles.openYouTubeBtn}
+                  onPress={() => handleOpenYouTube(activeVideo.youtubeId)}
+                >
+                  <ExternalLink size={18} color="#FFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.openYouTubeBtnText}>Open in YouTube App</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
+
 
 function GameScreen() {
   const { theme, toggleTheme } = useContext(ThemeContext);
@@ -686,9 +878,22 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
   },
-  videoThumbnail: {
+  videoThumbnailContainer: {
     height: 220,
+    width: '100%',
+    position: 'relative',
     backgroundColor: theme.isDark ? '#27272A' : '#1E293B',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  featuredThumbnailImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  videoOverlayGradient: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -710,7 +915,19 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     fontWeight: '800',
     color: theme.primary,
     letterSpacing: 1.2,
-    marginBottom: 10,
+  },
+  durationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  durationChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.primary,
   },
   videoTitle: {
     fontSize: 22,
@@ -723,6 +940,27 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     fontWeight: '600',
     color: theme.textMuted,
     marginTop: 8,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: theme.surface,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  activeCategoryChip: {
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
+  },
+  categoryChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.textMuted,
+  },
+  activeCategoryChipText: {
+    color: '#FFFFFF',
   },
   videoListCard: {
     flexDirection: 'row',
@@ -738,13 +976,169 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     shadowOpacity: theme.isDark ? 0.2 : 0.02,
     shadowRadius: 8,
   },
-  smallThumbnail: {
+  smallThumbnailContainer: {
     width: 110,
     height: 72,
     borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    marginRight: 16,
+  },
+  smallThumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  smallPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+  },
+  levelTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.primary,
+    textTransform: 'uppercase',
+  },
+  dotSeparator: {
+    fontSize: 11,
+    color: theme.textMuted,
+    marginHorizontal: 6,
+  },
+  categoryTag: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: theme.textMuted,
+  },
+  // Video Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: theme.surface,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    maxHeight: '90%',
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalCategoryBadge: {
+    backgroundColor: theme.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 10,
+  },
+  modalCategoryBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.primary,
+  },
+  modalLevelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textMuted,
+  },
+  closeButton: {
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: theme.isDark ? '#27272A' : '#F1F5F9',
+  },
+  playerContainer: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+  },
+  nativePlayerPlaceholder: {
+    width: '100%',
+    height: 200,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalThumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  nativePlayerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playNowText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+    marginTop: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: theme.textDark,
+    marginTop: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.textMuted,
+    marginTop: 4,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 12,
+  },
+  metaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  metaBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.primary,
+    marginLeft: 6,
+  },
+  descriptionHeader: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.textDark,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  descriptionText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: theme.textMuted,
+  },
+  openYouTubeBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.primary,
+    paddingVertical: 14,
+    borderRadius: 20,
+    marginTop: 16,
+  },
+  openYouTubeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   
   // Game Styles

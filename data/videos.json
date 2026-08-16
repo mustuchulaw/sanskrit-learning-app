@@ -1,0 +1,68 @@
+[
+  {
+    "id": "v1",
+    "youtubeId": "oQmoh-z-gGc",
+    "title": "Sanskrit Alphabet & Pronunciation Masterclass",
+    "subtitle": "Vowels (Svara) & Consonants (Vyanjana)",
+    "category": "Pronunciation",
+    "duration": "18 Mins",
+    "level": "Beginner",
+    "isFeatured": true,
+    "description": "Learn the authentic pronunciation of Sanskrit letters, mouth positions (Sthana), and correct phonetic articulation."
+  },
+  {
+    "id": "v2",
+    "youtubeId": "0emIewicwl0",
+    "title": "Understanding Noun Cases (Vibhakti)",
+    "subtitle": "Introduction to 7 Vibhaktis in Sanskrit",
+    "category": "Grammar",
+    "duration": "14 Mins",
+    "level": "Beginner",
+    "isFeatured": false,
+    "description": "Master the fundamental case endings (Vibhakti) for masculine, feminine, and neuter nouns in everyday Sanskrit sentences."
+  },
+  {
+    "id": "v3",
+    "youtubeId": "Tjw8_xZ3-ng",
+    "title": "Spoken Sanskrit Conversation Guide",
+    "subtitle": "Daily Greetings & Basic Sentences",
+    "category": "Conversation",
+    "duration": "12 Mins",
+    "level": "Beginner",
+    "isFeatured": false,
+    "description": "Practice conversational Sanskrit phrases for greetings, self-introductions, and common daily interactions."
+  },
+  {
+    "id": "v4",
+    "youtubeId": "9-kflUV2FvQ",
+    "title": "Shloka Chanting & Metrical Rhythm",
+    "subtitle": "Chanting Rules & Swara Marks",
+    "category": "Chanting",
+    "duration": "20 Mins",
+    "level": "Intermediate",
+    "isFeatured": false,
+    "description": "Discover classical Sanskrit chanda (meters) and learn step-by-step Vedic chanting techniques."
+  },
+  {
+    "id": "v5",
+    "youtubeId": "bN59dl_H_k0",
+    "title": "Sanskrit Verb Forms (Dhatu Roop)",
+    "subtitle": "Present Tense (Lat Lakara) Rules",
+    "category": "Grammar",
+    "duration": "16 Mins",
+    "level": "Intermediate",
+    "isFeatured": false,
+    "description": "A comprehensive guide to understanding verb roots (Dhatu) and conjugations across present tense (Lat Lakara)."
+  },
+  {
+    "id": "v6",
+    "youtubeId": "RFJsC71PrDE",
+    "title": "Essential Sanskrit Vocabulary 100 Words",
+    "subtitle": "Nouns, Verbs & Adjectives",
+    "category": "Pronunciation",
+    "duration": "15 Mins",
+    "level": "Beginner",
+    "isFeatured": false,
+    "description": "Expand your Sanskrit vocabulary with 100 essential words categorized by family, nature, numbers, and action words."
+  }
+]
