@@ -1,7 +1,7 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, Check, RotateCcw, ArrowRight, Award, HelpCircle } from 'lucide-react-native';
+import { ChevronLeft, Check, RotateCcw, ArrowRight, Award } from 'lucide-react-native';
 import { ThemeContext } from '../../App';
 import { GameProgress } from './khelaState';
 
@@ -11,49 +11,116 @@ interface WordChainProps {
   onUpdateProgress: (updates: Partial<GameProgress>) => void;
 }
 
-const WORD_CHAIN_LEVELS = [
+export interface WordChainLevel {
+  meaning: string;
+  correctAnswer: string[];
+  pool: string[];
+  explanation: string;
+}
+
+const WORD_CHAIN_DATABASE: WordChainLevel[] = [
   {
     meaning: "Truth alone triumphs.",
     correctAnswer: ["सत्यमेव", "जयते"],
     pool: ["जयते", "सत्यमेव", "मिथ्या", "सदा"],
-    explanation: "सत्यमेव (Satyameva) means 'Truth alone' and जयते (Jayate) means 'triumphs'. This is the national motto of India, sourced from the Mundaka Upanishad."
+    explanation: "सत्यमेव (Satyameva) means 'Truth alone' and जयते (Jayate) means 'triumphs'. Sourced from the Mundaka Upanishad."
   },
   {
     meaning: "Mother and Motherland are greater than Heaven.",
     correctAnswer: ["जननी", "जन्मभूमिश्च", "स्वर्गादपि", "गरीयसी"],
     pool: ["गरीयसी", "स्वर्गादपि", "जन्मभूमिश्च", "जननी", "महिमा", "पिता"],
-    explanation: "जननी (Mother) जन्मभूमिश्च (and Motherland) स्वर्गादपि (even than heaven) गरीयसी (are greater/superior). This is a famous verse from the Ramayana."
+    explanation: "जननी (Mother) जन्मभूमिश्च (and Motherland) स्वर्गादपि (even than heaven) गरीयसी (are greater/superior). Sourced from the Ramayana."
   },
   {
     meaning: "Knowledge is the ultimate ornament.",
     correctAnswer: ["विद्या", "परं", "भूषणम्"],
     pool: ["भूषणम्", "परं", "विद्या", "अज्ञानं", "धनं"],
-    explanation: "विद्या (Knowledge) परं (ultimate/greatest) भूषणम् (ornament/decoration). It means education and knowledge beautify a person more than physical jewelry."
+    explanation: "विद्या (Knowledge) परं (ultimate/greatest) भूषणम् (ornament/decoration). Knowledge is the supreme embellishment."
   },
   {
     meaning: "Work indeed is worship.",
     correctAnswer: ["कर्म", "एव", "पूजा"],
     pool: ["पूजा", "एव", "कर्म", "क्रोधः", "भक्तिः"],
-    explanation: "कर्म (Work/Action) एव (indeed/only) पूजा (worship). It teaches that performing one's duty with dedication is the highest form of worship."
+    explanation: "कर्म (Work) एव (indeed) पूजा (worship). Performing duty dedicatedly is true devotion."
   },
   {
     meaning: "The entire world is indeed one family.",
     correctAnswer: ["वसुधैव", "कुटुम्बकम्"],
     pool: ["कुटुम्बकम्", "वसुधैव", "गृहं", "ग्रामः"],
-    explanation: "वसुधा (the earth) + एव (indeed/alone) = वसुधैव (the earth itself is) कुटुम्बकम् (a family). Taken from the Maha Upanishad."
+    explanation: "वसुधा (the earth) + एव (indeed) = वसुधैव (the earth itself is) कुटुम्बकम् (a family). From the Maha Upanishad."
+  },
+  {
+    meaning: "Non-violence is the highest duty.",
+    correctAnswer: ["अहिंसा", "परमः", "धर्मः"],
+    pool: ["धर्मः", "अहिंसा", "परमः", "हिंसा", "सत्यम्"],
+    explanation: "अहिंसा (Non-violence) परमः (highest) धर्मः (duty/righteousness). A core ethical tenet in Sanskrit tradition."
+  },
+  {
+    meaning: "Yoga is skill in action.",
+    correctAnswer: ["योगः", "कर्मसु", "कौशलम्"],
+    pool: ["कौशलम्", "कर्मसु", "योगः", "ज्ञानम्", "भक्तिः"],
+    explanation: "योगः (Yoga) कर्मसु (in actions) कौशलम् (skillfulness). Sourced from the Bhagavad Gita (2.50)."
+  },
+  {
+    meaning: "Speak the truth, practice righteousness.",
+    correctAnswer: ["सत्यं", "वद", "धर्मं", "चर"],
+    pool: ["चर", "सत्यं", "धर्मं", "वद", "असत्यम्", "त्यज"],
+    explanation: "सत्यं (Truth) वद (speak), धर्मं (righteousness) चर (practice). Famous injunction from Taittiriya Upanishad."
+  },
+  {
+    meaning: "Knowledge bestows humility.",
+    correctAnswer: ["विद्या", "ददाति", "विनयम्"],
+    pool: ["विनयम्", "ददाति", "विद्या", "अहङ्कारम्", "धनम्"],
+    explanation: "विद्या (Knowledge) ददाति (bestows) विनयम् (humility/modesty). True learning brings selflessness."
+  },
+  {
+    meaning: "Lead me from darkness to light.",
+    correctAnswer: ["तमसो", "मा", "ज्योतिर्गमय"],
+    pool: ["ज्योतिर्गमय", "मा", "तमसो", "प्रकाशः", "अन्धकारः"],
+    explanation: "तमसः (from darkness) मा (me) ज्योतिः (to light) गमय (lead). From the Brihadaranyaka Upanishad."
+  },
+  {
+    meaning: "May all beings be happy.",
+    correctAnswer: ["सर्वे", "भवन्तु", "सुखिनः"],
+    pool: ["सुखिनः", "भवन्तु", "सर्वे", "दुःखिनः", "शान्ताः"],
+    explanation: "सर्वे (All) भवन्तु (may become) सुखिनः (happy/peaceful). Universal Sanskrit prayer for well-being."
+  },
+  {
+    meaning: "Righteousness protects those who protect it.",
+    correctAnswer: ["धर्मो", "रक्षति", "रक्षितः"],
+    pool: ["रक्षितः", "रक्षति", "धर्मो", "सत्यम्", "पापम्"],
+    explanation: "धर्मः (Righteousness) रक्षति (protects) रक्षितः (when protected). From the Mahabharata."
   }
 ];
 
 const XP_PER_LEVEL = 20;
 
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function generateDynamicRound(): WordChainLevel[] {
+  const shuffledDb = shuffleArray(WORD_CHAIN_DATABASE);
+  return shuffledDb.slice(0, 5).map(lvl => ({
+    ...lvl,
+    pool: shuffleArray(lvl.pool)
+  }));
+}
+
 export default function WordChain({ progress, onBack, onUpdateProgress }: WordChainProps) {
   const { theme } = useContext(ThemeContext);
   
-  const currentLevelIndex = Math.min(progress.wordChain.currentLevel, WORD_CHAIN_LEVELS.length - 1);
-  const isGameFinished = progress.wordChain.currentLevel >= WORD_CHAIN_LEVELS.length;
-  
-  const levelData = WORD_CHAIN_LEVELS[currentLevelIndex];
-  
+  const [activeLevels, setActiveLevels] = useState<WordChainLevel[]>(() => generateDynamicRound());
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+
+  const isGameFinished = currentStepIndex >= activeLevels.length;
+  const levelData = activeLevels[Math.min(currentStepIndex, activeLevels.length - 1)];
+
   const [placedBricks, setPlacedBricks] = useState<string[]>([]);
   const [hasChecked, setHasChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
@@ -62,10 +129,8 @@ export default function WordChain({ progress, onBack, onUpdateProgress }: WordCh
   const handleSelectBrick = (brick: string) => {
     if (hasChecked && isCorrect) return;
     if (placedBricks.includes(brick)) {
-      // Remove it
       setPlacedBricks(prev => prev.filter(b => b !== brick));
     } else {
-      // Add it
       setPlacedBricks(prev => [...prev, brick]);
     }
     setHasChecked(false);
@@ -100,30 +165,26 @@ export default function WordChain({ progress, onBack, onUpdateProgress }: WordCh
   };
 
   const handleNextLevel = () => {
-    const nextLevel = progress.wordChain.currentLevel + 1;
+    const nextStep = currentStepIndex + 1;
     const newXP = progress.totalXP + XP_PER_LEVEL;
     
     onUpdateProgress({
       totalXP: newXP,
       wordChain: {
-        currentLevel: nextLevel,
-        highScore: Math.max(progress.wordChain.highScore, nextLevel * 20),
+        currentLevel: progress.wordChain.currentLevel + 1,
+        highScore: Math.max(progress.wordChain.highScore, (progress.wordChain.currentLevel + 1) * 20),
       }
     });
 
-    // Reset local state
+    setCurrentStepIndex(nextStep);
     setPlacedBricks([]);
     setHasChecked(false);
     setIsCorrect(false);
   };
 
-  const handleRestartGame = () => {
-    onUpdateProgress({
-      wordChain: {
-        currentLevel: 0,
-        highScore: progress.wordChain.highScore,
-      }
-    });
+  const handleNextRound = () => {
+    setActiveLevels(generateDynamicRound());
+    setCurrentStepIndex(0);
     setPlacedBricks([]);
     setHasChecked(false);
     setIsCorrect(false);
@@ -136,22 +197,22 @@ export default function WordChain({ progress, onBack, onUpdateProgress }: WordCh
           <LinearGradient colors={['#F59E0B', '#B45309']} style={styles.trophyIcon}>
             <Award size={48} color="#FFF" />
           </LinearGradient>
-          <Text style={[styles.successTitle, { color: theme.textDark }]}>Word Chain Complete!</Text>
+          <Text style={[styles.successTitle, { color: theme.textDark }]}>Word Chain Completed!</Text>
           <Text style={[styles.successSubtitle, { color: theme.textMuted }]}>
-            You have successfully arranged all Sanskrit quotes and words!
+            Awesome job! You arranged all 5 Sanskrit sentence puzzles in this set.
           </Text>
           <Text style={[styles.xpEarnedText, { color: theme.primary }]}>
-            +{WORD_CHAIN_LEVELS.length * XP_PER_LEVEL} XP Earned
+            +{activeLevels.length * XP_PER_LEVEL} XP Earned
           </Text>
           
-          <TouchableOpacity activeOpacity={0.8} style={styles.primaryBtn} onPress={onBack}>
+          <TouchableOpacity activeOpacity={0.8} style={styles.primaryBtn} onPress={handleNextRound}>
             <LinearGradient colors={[theme.primary, theme.primaryDark]} style={styles.btnGradient}>
-              <Text style={styles.btnText}>Back to Game Room</Text>
+              <Text style={styles.btnText}>Play Next Round (New Sentences)</Text>
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity activeOpacity={0.7} style={styles.secondaryBtn} onPress={handleRestartGame}>
-            <Text style={[styles.secondaryBtnText, { color: theme.textMuted }]}>Play Again</Text>
+          <TouchableOpacity activeOpacity={0.7} style={styles.secondaryBtn} onPress={onBack}>
+            <Text style={[styles.secondaryBtnText, { color: theme.textMuted }]}>Back to Game Room</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -166,7 +227,7 @@ export default function WordChain({ progress, onBack, onUpdateProgress }: WordCh
           <ChevronLeft size={22} color={theme.textDark} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.textDark }]}>
-          Level {currentLevelIndex + 1}/{WORD_CHAIN_LEVELS.length}
+          Level {currentStepIndex + 1}/{activeLevels.length}
         </Text>
         <View style={[styles.pointsBadge, { backgroundColor: theme.primaryLight }]}>
           <Text style={[styles.pointsText, { color: theme.isDark ? '#FFF' : theme.primaryDark }]}>
@@ -181,7 +242,7 @@ export default function WordChain({ progress, onBack, onUpdateProgress }: WordCh
         <Text style={[styles.promptWord, { color: theme.textDark }]}>"{levelData.meaning}"</Text>
       </View>
 
-      {/* Target Area (Slots where bricks go) */}
+      {/* Target Area */}
       <View style={[
         styles.targetArea, 
         { borderColor: hasChecked ? (isCorrect ? '#10B981' : '#EF4444') : theme.border },
@@ -193,7 +254,7 @@ export default function WordChain({ progress, onBack, onUpdateProgress }: WordCh
           </Text>
         ) : (
           <View style={styles.placedRow}>
-            {placedBricks.map((brick, index) => (
+            {placedBricks.map((brick) => (
               <TouchableOpacity
                 key={brick}
                 style={[styles.brick, { backgroundColor: theme.primary }]}
@@ -295,6 +356,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 40,
+    paddingHorizontal: 24,
   },
   card: {
     borderRadius: 32,
@@ -541,8 +603,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   shakeAnimation: {
-    // Basic border flash effect since React Native doesn't support css @keyframes animations natively without Reanimated.
-    // Setting border width higher looks bold.
     borderWidth: 2.5,
   },
 });
