@@ -13,7 +13,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sanskritapp.learning"
+      "bundleIdentifier": "com.sanskritapp.learning",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.sanskritapp.learning",
@@ -24,6 +27,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8cfa323d-e5db-4426-b20a-c7ce9f164bfb"
+      }
     }
   }
 }
